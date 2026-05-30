@@ -1,11 +1,7 @@
 (async () => {
   let host = null;
-  let button = null;
-  let backdrop = null;
   let panel = null;
-  let collectorSelect = null;
-  let saveLinkInput = null;
-  let saveButton = null;
+  let collectorButtons = null;
   let lastSelection = "";
   let lastSource = null;
   let lastRect = null;
@@ -76,179 +72,66 @@
         z-index: 2147483647;
         pointer-events: none;
       }
-      .tc-btn {
-        position: fixed;
-        z-index: 2147483647;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 999px;
-        background: #111;
-        color: #f5f5f5;
-        border: 1px solid #2a2a2a;
-        font: 600 14px/1.2 Arial, sans-serif;
-        cursor: pointer;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-        pointer-events: auto;
-      }
-      .tc-backdrop {
-        position: fixed;
-        inset: 0;
-        display: none;
-        background: transparent;
-        pointer-events: auto;
-      }
       .tc-panel {
         position: fixed;
         display: none;
-        width: 220px;
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid #2a2a2a;
-        background: #111;
+        max-width: min(320px, calc(100vw - 24px));
+        padding: 6px;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
         color: #f5f5f5;
-        font: 600 13px/1.4 Arial, sans-serif;
-        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+        font: 600 12px/1.4 Arial, sans-serif;
+        box-shadow: none;
         pointer-events: auto;
       }
-      .tc-field {
+      .tc-buttons {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-bottom: 10px;
-      }
-      .tc-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: #a3a3a3;
-      }
-      .tc-select {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 10px;
-        border: 1px solid #2a2a2a;
-        background: #0c0c0c;
-        color: #f5f5f5;
-        font-size: 13px;
-      }
-      .tc-row {
-        display: flex;
-        align-items: center;
         gap: 8px;
-        font-size: 12px;
-        color: #d4d4d4;
-        margin-bottom: 10px;
+        flex-wrap: wrap;
+        align-items: center;
       }
-      .tc-row input {
-        width: 14px;
-        height: 14px;
-      }
-      .tc-save {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 10px;
+      .tc-collector {
         border: 1px solid #2a2a2a;
-        background: #1a1a1a;
+        background: #000;
         color: #f5f5f5;
-        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 10px;
+        font: 600 12px/1.2 Arial, sans-serif;
         cursor: pointer;
       }
-      .tc-save:disabled {
-        opacity: 0.5;
+      .tc-collector:disabled {
+        opacity: 0.6;
         cursor: not-allowed;
       }
       @media (hover: hover) {
-        .tc-btn:hover {
-          background: #1a1a1a;
-        }
-        .tc-save:hover {
-          background: #232323;
+        .tc-collector:hover {
+          border-color: #3a3a3a;
         }
       }
     `;
     const root = document.createElement("div");
     root.className = "tc-root";
-    button = document.createElement("button");
-    button.className = "tc-btn";
-    button.textContent = "TC";
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openPanel();
-    });
-
-    backdrop = document.createElement("div");
-    backdrop.className = "tc-backdrop";
-    backdrop.addEventListener("pointerdown", (event) => {
-      if (event.target === backdrop) {
-        closePanel();
-      }
-    });
-
     panel = document.createElement("div");
     panel.className = "tc-panel";
-    const collectorField = document.createElement("div");
-    collectorField.className = "tc-field";
-    const collectorLabel = document.createElement("div");
-    collectorLabel.className = "tc-label";
-    collectorLabel.textContent = "Collector";
-    collectorSelect = document.createElement("select");
-    collectorSelect.className = "tc-select";
-    collectorField.appendChild(collectorLabel);
-    collectorField.appendChild(collectorSelect);
+    collectorButtons = document.createElement("div");
+    collectorButtons.className = "tc-buttons";
+    panel.appendChild(collectorButtons);
 
-    const linkRow = document.createElement("label");
-    linkRow.className = "tc-row";
-    saveLinkInput = document.createElement("input");
-    saveLinkInput.type = "checkbox";
-    saveLinkInput.checked = true;
-    const linkText = document.createElement("span");
-    linkText.textContent = "Save with link";
-    linkRow.appendChild(saveLinkInput);
-    linkRow.appendChild(linkText);
-
-    saveButton = document.createElement("button");
-    saveButton.className = "tc-save";
-    saveButton.type = "button";
-    saveButton.textContent = "Save";
-    saveButton.addEventListener("click", async () => {
-      await saveSelection();
-    });
-
-    panel.appendChild(collectorField);
-    panel.appendChild(linkRow);
-    panel.appendChild(saveButton);
-
-    root.appendChild(button);
-    root.appendChild(backdrop);
     root.appendChild(panel);
     shadow.appendChild(style);
     shadow.appendChild(root);
     document.documentElement.appendChild(host);
   };
 
-  const hideButton = () => {
-    if (!button) return;
-    button.style.display = "none";
-  };
-
-  const showButton = (rect) => {
-    if (!button) return;
-    const top = Math.max(8, rect.top + window.scrollY - 48);
-    const left = Math.max(8, rect.left + window.scrollX);
-    button.style.display = "flex";
-    button.style.top = `${top}px`;
-    button.style.left = `${left}px`;
-  };
-
   const positionPanel = (rect) => {
     if (!panel) return;
-    const panelHeight = 140;
-    const top = Math.max(8, rect.top + window.scrollY - panelHeight - 12);
-    const left = Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - 240));
+    const offset = 6;
+    const top = Math.max(8, rect.top + window.scrollY - offset - 40);
+    const left = Math.max(
+      8,
+      Math.min(rect.left + window.scrollX, window.innerWidth - 320)
+    );
     panel.style.top = `${top}px`;
     panel.style.left = `${left}px`;
   };
@@ -256,53 +139,49 @@
   const updateCollectors = async () => {
     const response = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
     const collectors = response?.collectors || [];
-    collectorSelect.innerHTML = "";
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = "Default";
-    collectorSelect.appendChild(defaultOption);
+    if (!collectorButtons) return;
+    collectorButtons.innerHTML = "";
     collectors.forEach((collector) => {
-      const option = document.createElement("option");
-      option.value = collector.id;
-      option.textContent = collector.name;
-      collectorSelect.appendChild(option);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tc-collector";
+      button.textContent = collector.name || "Collector";
+      button.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await saveSelection(collector.id);
+      });
+      collectorButtons.appendChild(button);
     });
-    saveButton.disabled = false;
   };
 
   const openPanel = async () => {
-    if (!panel || !backdrop) return;
+    if (!panel) return;
     if (!lastRect) return;
-    backdrop.style.display = "block";
     panel.style.display = "block";
     positionPanel(lastRect);
-    saveButton.disabled = true;
     await updateCollectors();
   };
 
   const closePanel = () => {
-    if (!panel || !backdrop) return;
+    if (!panel) return;
     panel.style.display = "none";
-    backdrop.style.display = "none";
   };
 
-  const saveSelection = async () => {
+  const saveSelection = async (collectorId) => {
     const text = sanitizeSelection(lastSelection);
     if (!text) return;
     const payload = {
       type: "SAVE_ITEM",
       text,
-      source: saveLinkInput.checked
-        ? {
-            ...(lastSource || resolveSource(window.getSelection())),
-            savedAt: new Date().toISOString()
-          }
-        : null,
-      collectorId: collectorSelect.value || undefined
+      source: {
+        ...(lastSource || resolveSource(window.getSelection())),
+        savedAt: new Date().toISOString()
+      },
+      collectorId: collectorId || undefined
     };
     const response = await chrome.runtime.sendMessage(payload);
     closePanel();
-    hideButton();
     if (response?.ok) {
       showToast("Saved");
     } else {
@@ -332,14 +211,12 @@
   const onSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) {
-      hideButton();
       closePanel();
       return;
     }
     const text = selection.toString();
     lastSelection = text;
     if (!text.trim()) {
-      hideButton();
       closePanel();
       return;
     }
@@ -347,7 +224,7 @@
     const rect = range.getBoundingClientRect();
     lastRect = rect;
     lastSource = resolveSource(selection);
-    showButton(rect);
+    openPanel();
   };
 
   createButton();
@@ -358,13 +235,11 @@
   });
 
   document.addEventListener("scroll", () => {
-    hideButton();
     closePanel();
   }, true);
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      hideButton();
       closePanel();
     }
   });
