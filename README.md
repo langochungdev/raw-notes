@@ -12,7 +12,7 @@
 graph TD
     subgraph Browser
         A[Web Page] -->|1. Highlight text| B(Content Script<br/>Shadow DOM Tooltip)
-        B -->|2. Send {text, url, title}| C(Service Worker<br/>Message Hub)
+        B -->|2. Send (text, url, title)| C(Service Worker<br/>Message Hub)
         F[Sidepanel<br/>Obsidian Editor] <-->|Read/Write| C
         G[Manager UI<br/>Search & Manage] <-->|Query| C
     end
