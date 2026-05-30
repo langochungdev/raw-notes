@@ -621,22 +621,61 @@ export class StorageService {
 
   async requestCollectorDirectory() {
     const handle = await window.showDirectoryPicker();
-    await setHandle(STORAGE_KEYS.FS_HANDLE, handle);
-    return handle;
+    return this.storeCollectorDirectoryHandle(handle);
   }
 
   async requestVaultDirectory() {
     const handle = await window.showDirectoryPicker();
+    return this.storeVaultDirectoryHandle(handle);
+  }
+
+  async storeCollectorDirectoryHandle(handle) {
+    if (!handle) return null;
+    await setHandle(STORAGE_KEYS.FS_HANDLE, handle);
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.FS_HANDLE]: handle });
+    } catch (error) {
+      await Promise.resolve();
+    }
+    return handle;
+  }
+
+  async storeVaultDirectoryHandle(handle) {
+    if (!handle) return null;
     await setHandle(STORAGE_KEYS.VAULT_HANDLE, handle);
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_HANDLE]: handle });
+    } catch (error) {
+      await Promise.resolve();
+    }
     return handle;
   }
 
   async restoreCollectorDirectory() {
+    try {
+      const stored = await chrome.storage.local.get(STORAGE_KEYS.FS_HANDLE);
+      if (stored?.[STORAGE_KEYS.FS_HANDLE]) {
+        return stored[STORAGE_KEYS.FS_HANDLE];
+      }
+    } catch (error) {
+      await Promise.resolve();
+    }
     return getHandle(STORAGE_KEYS.FS_HANDLE);
   }
 
   async restoreVaultDirectory() {
-    const handle = await getHandle(STORAGE_KEYS.VAULT_HANDLE);
+    let handle = null;
+    try {
+      const stored = await chrome.storage.local.get(STORAGE_KEYS.VAULT_HANDLE);
+      if (stored?.[STORAGE_KEYS.VAULT_HANDLE]) {
+        handle = stored[STORAGE_KEYS.VAULT_HANDLE];
+      }
+    } catch (error) {
+      handle = null;
+    }
+    if (!handle) {
+      handle = await getHandle(STORAGE_KEYS.VAULT_HANDLE);
+    }
     try {
       console.debug("restoreVaultDirectory handle:", handle);
     } catch (e) {

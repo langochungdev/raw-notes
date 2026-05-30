@@ -133,6 +133,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true, collectors };
     }
 
+    if (message?.type === "STORE_VAULT_HANDLE") {
+      if (!message.handle) {
+        return { ok: false, error: "Missing handle" };
+      }
+      await storageService.storeVaultDirectoryHandle(message.handle);
+      return { ok: true };
+    }
+
+    if (message?.type === "GET_VAULT_HANDLE") {
+      const handle = await storageService.restoreVaultDirectory();
+      return { ok: true, handle: handle || null };
+    }
+
+    if (message?.type === "GET_COLLECTOR_HANDLE") {
+      const handle = await storageService.restoreCollectorDirectory();
+      return { ok: true, handle: handle || null };
+    }
+
+    if (message?.type === "STORE_COLLECTOR_HANDLE") {
+      if (!message.handle) {
+        return { ok: false, error: "Missing handle" };
+      }
+      await storageService.storeCollectorDirectoryHandle(message.handle);
+      return { ok: true };
+    }
+
     if (message?.type === "CREATE_COLLECTOR") {
       const collector = await storageService.createCollector(message.data);
       return { ok: true, collector };

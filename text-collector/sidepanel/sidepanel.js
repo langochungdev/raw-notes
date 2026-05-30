@@ -892,7 +892,20 @@ const pickVault = async () => {
 };
 
 const loadVault = async () => {
-  const handle = await storage.restoreVaultDirectory();
+  let handle = await storage.restoreVaultDirectory();
+  if (!handle) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "GET_VAULT_HANDLE"
+      });
+      if (response?.ok && response.handle) {
+        await storage.storeVaultDirectoryHandle(response.handle);
+        handle = response.handle;
+      }
+    } catch (error) {
+      handle = null;
+    }
+  }
   if (!handle) {
     app.vaultHandle = null;
     app.rootHandle = null;
@@ -903,7 +916,10 @@ const loadVault = async () => {
     return;
   }
 
-  const permission = await storage.queryVaultPermission();
+  let permission = await storage.queryVaultPermission();
+  if (permission !== "granted") {
+    permission = await storage.requestVaultPermission();
+  }
   if (permission !== "granted") {
     await editorManager.clearCurrentFile();
     app.vaultHandle = null;
