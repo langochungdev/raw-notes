@@ -1,9 +1,6 @@
 export const attachManualEntry = ({
-  form,
-  entryText,
-  entryNote,
-  entryTags,
-  entryCollector,
+  triggerButton,
+  openModal,
   storage,
   searchService,
   getActiveCollectorId,
@@ -17,23 +14,22 @@ export const attachManualEntry = ({
   showNotice,
   doc
 }) => {
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const text = entryText.value.trim();
-    if (!text) {
-      showNotice(doc, "Text is required");
+  const handleOpen = async () => {
+    const collectors = getAllCollectors();
+    if (collectors.length === 0) {
+      showNotice(doc, "Create a collector first");
       return;
     }
-    const collectorId = entryCollector.value || getActiveCollectorId();
+    const payload = await openModal({
+      collectors,
+      activeCollectorId: getActiveCollectorId()
+    });
+    if (!payload) return;
+    const { text, note, tags, collectorId } = payload;
     if (!collectorId) {
       showNotice(doc, "Select a collector");
       return;
     }
-    const note = entryNote.value.trim();
-    const tags = entryTags.value
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
     const tempId = `temp-${crypto.randomUUID()}`;
     const snapshot = {
       items: [...getAllItems()],
@@ -55,9 +51,6 @@ export const attachManualEntry = ({
     await searchService.index(optimisticItems);
     renderCollectors();
     refreshItems();
-    entryText.value = "";
-    entryNote.value = "";
-    entryTags.value = "";
 
     try {
       const saved = await storage.saveItem({
@@ -83,5 +76,7 @@ export const attachManualEntry = ({
       refreshItems();
       showNotice(doc, "Save failed");
     }
-  });
+  };
+
+  triggerButton.addEventListener("click", handleOpen);
 };

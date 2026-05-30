@@ -43,11 +43,10 @@ const logFilterButtons = Array.from(
   document.querySelectorAll("[data-log-filter]")
 );
 const manualEntryForm = document.getElementById("manual-entry");
-const manualPanel = document.getElementById("manual-panel");
-const entryText = document.getElementById("entry-text");
-const entryNote = document.getElementById("entry-note");
-const entryTags = document.getElementById("entry-tags");
 const entryCollector = document.getElementById("entry-collector");
+const editCollectorRow = document.getElementById("edit-collector-row");
+const editCollector = document.getElementById("edit-collector");
+const editTitle = document.getElementById("edit-title");
 const editModal = document.getElementById("edit-modal");
 const editSaveButton = document.getElementById("save-edit");
 const editCancelButton = document.getElementById("cancel-edit");
@@ -92,6 +91,9 @@ const editModalManager = createEditModal({
   textInput: editText,
   noteInput: editNote,
   tagsInput: editTags,
+  collectorRow: editCollectorRow,
+  collectorSelect: editCollector,
+  titleEl: editTitle,
   errorEl: editError,
   doc: document
 });
@@ -175,10 +177,6 @@ searchInput.addEventListener("input", () => {
   itemManager.refreshItems();
 });
 
-manualEntryToggle.addEventListener("click", () => {
-  manualPanel.classList.toggle("hidden");
-});
-
 filterToggle.addEventListener("click", () => {
   searchInput.focus();
 });
@@ -197,11 +195,9 @@ attachImportExport({
 });
 
 attachManualEntry({
-  form: manualEntryForm,
-  entryText,
-  entryNote,
-  entryTags,
-  entryCollector,
+  triggerButton: manualEntryToggle,
+  openModal: ({ collectors, activeCollectorId }) =>
+    editModalManager.openCreate({ collectors, activeCollectorId }),
   storage,
   searchService,
   getActiveCollectorId: () => activeCollectorId,

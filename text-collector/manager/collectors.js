@@ -82,13 +82,8 @@ export const createCollectorManager = ({
   const handleCollectorSelect = async (id) => {
     setActiveCollectorId(id);
     onActiveCollectorChange?.(id);
-      await loadItems();
-    renderCollectors(collectorList, getCollectors(), getActiveCollectorId(), {
-      onSelect: () => {},
-      onRename: () => {},
-      onDelete: () => {},
-      onColor: () => {}
-    });
+    await loadItems();
+    renderCollectorList();
     populateCollectorSelect();
   };
 

@@ -5,11 +5,19 @@ export const createEditModal = ({
   textInput,
   noteInput,
   tagsInput,
+  collectorRow,
+  collectorSelect,
+  titleEl,
   errorEl,
   doc
 }) => {
   let resolver = null;
   let isOpen = false;
+  let mode = "edit";
+
+  if (collectorRow) {
+    collectorRow.classList.add("hidden");
+  }
 
   const setError = (message) => {
     errorEl.textContent = message || "";
@@ -27,13 +35,53 @@ export const createEditModal = ({
   };
 
   const open = (item) => {
+    mode = "edit";
     if (isOpen) {
       close(null);
     }
     isOpen = true;
+    if (titleEl) {
+      titleEl.textContent = "Edit Item";
+    }
+    if (collectorRow) {
+      collectorRow.classList.add("hidden");
+    }
     textInput.value = item.text || "";
     noteInput.value = item.note || "";
     tagsInput.value = (item.tags || []).join(", ");
+    setError("");
+    modal.classList.remove("hidden");
+    textInput.focus();
+    return new Promise((resolve) => {
+      resolver = resolve;
+    });
+  };
+
+  const openCreate = ({ collectors, activeCollectorId }) => {
+    mode = "create";
+    if (isOpen) {
+      close(null);
+    }
+    isOpen = true;
+    if (titleEl) {
+      titleEl.textContent = "Add Entry";
+    }
+    if (collectorRow && collectorSelect) {
+      collectorRow.classList.remove("hidden");
+      collectorSelect.innerHTML = "";
+      collectors.forEach((collector) => {
+        const option = doc.createElement("option");
+        option.value = collector.id;
+        option.textContent = collector.name;
+        collectorSelect.appendChild(option);
+      });
+      if (activeCollectorId) {
+        collectorSelect.value = activeCollectorId;
+      }
+    }
+    textInput.value = "";
+    noteInput.value = "";
+    tagsInput.value = "";
     setError("");
     modal.classList.remove("hidden");
     textInput.focus();
@@ -53,6 +101,14 @@ export const createEditModal = ({
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
+    if (mode === "create" && collectorSelect) {
+      return {
+        text,
+        note,
+        tags,
+        collectorId: collectorSelect.value || null
+      };
+    }
     return { text, note, tags };
   };
 
@@ -77,5 +133,5 @@ export const createEditModal = ({
     }
   });
 
-  return { open, close };
+  return { open, openCreate, close };
 };

@@ -134,13 +134,16 @@ export const renderItems = (
     }
     const meta = document.createElement("div");
     meta.className = "item-meta";
-    const source = document.createElement("div");
+    const sourceUrl = item.source?.url || "";
+    const sourceLabel = item.source?.url || item.source?.title || "No source";
+    const source = sourceUrl ? document.createElement("a") : document.createElement("div");
     source.className = "item-source";
-    renderHighlightedText(
-      source,
-      item.source?.url || item.source?.title || "No source",
-      terms
-    );
+    if (sourceUrl && source instanceof HTMLAnchorElement) {
+      source.href = sourceUrl;
+      source.target = "_blank";
+      source.rel = "noopener noreferrer";
+    }
+    renderHighlightedText(source, sourceLabel, terms);
     const time = document.createElement("div");
     time.className = "item-time";
     time.textContent = formatRelativeTime(item.updatedAt || item.createdAt);
@@ -184,6 +187,9 @@ export const renderItems = (
       }
       content.appendChild(shareRow);
     }
+    content.appendChild(meta);
+    card.appendChild(select);
+    card.appendChild(content);
     if (actions?.onEdit) {
       const actionRow = document.createElement("div");
       actionRow.className = "item-actions";
@@ -193,11 +199,8 @@ export const renderItems = (
       editButton.textContent = "Edit";
       editButton.addEventListener("click", () => actions.onEdit(item));
       actionRow.appendChild(editButton);
-      content.appendChild(actionRow);
+      card.appendChild(actionRow);
     }
-    content.appendChild(meta);
-    card.appendChild(select);
-    card.appendChild(content);
     itemList.appendChild(card);
   });
 };
@@ -215,6 +218,7 @@ export const updateSelectionState = (
   selectAllInput.indeterminate = selected > 0 && selected < total;
   selectAllInput.checked = total > 0 && selected === total;
   deleteSelectedButton.disabled = selectedIds.size === 0;
+  deleteSelectedButton.classList.toggle("hidden", selectedIds.size === 0);
   if (itemsCount) {
     itemsCount.textContent = `${total} items`;
   }
