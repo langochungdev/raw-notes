@@ -32,9 +32,7 @@ const pickFolderButton = document.getElementById("pick-folder");
 const settingsModal = document.getElementById("settings-modal");
 const settingsCloseButton = document.getElementById("settings-close");
 const settingsCollectorsPath = document.getElementById("settings-collectors-path");
-const settingsVaultPath = document.getElementById("settings-vault-path");
 const settingsPickCollectors = document.getElementById("settings-pick-collectors");
-const settingsPickVault = document.getElementById("settings-pick-vault");
 const settingsShortcutInput = document.getElementById("settings-shortcut");
 const settingsModeInputs = Array.from(
   document.querySelectorAll("input[name=\"sidebar-open-mode\"]")
@@ -87,8 +85,7 @@ let reloadAllData = async () => {};
 const DEFAULT_SETTINGS = {
   sidebarOpenMode: "float",
   sidebarShortcut: "",
-  collectorFolderLabel: "",
-  vaultFolderLabel: ""
+  collectorFolderLabel: ""
 };
 let settingsState = { ...DEFAULT_SETTINGS };
 
@@ -245,19 +242,6 @@ const updateSettingsUI = async (options = {}) => {
   }
   if (settingsCollectorsPath) {
     let handle = await storage.restoreCollectorDirectory();
-    if (!handle) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: "GET_COLLECTOR_HANDLE"
-        });
-        if (response?.ok && response.handle) {
-          await storage.storeCollectorDirectoryHandle(response.handle);
-          handle = response.handle;
-        }
-      } catch (error) {
-        handle = null;
-      }
-    }
     if (handle?.name) {
       settingsCollectorsPath.textContent = handle.name;
       await writeSettings({ collectorFolderLabel: handle.name });
@@ -265,30 +249,6 @@ const updateSettingsUI = async (options = {}) => {
       settingsCollectorsPath.textContent = settingsState.collectorFolderLabel;
     } else if (!preferExistingPaths || settingsCollectorsPath.textContent === "") {
       settingsCollectorsPath.textContent = "Not set";
-    }
-  }
-  if (settingsVaultPath) {
-    let handle = await storage.restoreVaultDirectory();
-    if (!handle) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: "GET_VAULT_HANDLE"
-        });
-        if (response?.ok && response.handle) {
-          await storage.storeVaultDirectoryHandle(response.handle);
-          handle = response.handle;
-        }
-      } catch (error) {
-        handle = null;
-      }
-    }
-    if (handle?.name) {
-      settingsVaultPath.textContent = handle.name;
-      await writeSettings({ vaultFolderLabel: handle.name });
-    } else if (settingsState.vaultFolderLabel) {
-      settingsVaultPath.textContent = settingsState.vaultFolderLabel;
-    } else if (!preferExistingPaths || settingsVaultPath.textContent === "") {
-      settingsVaultPath.textContent = "Not set";
     }
   }
 };
@@ -438,45 +398,23 @@ settingsPickCollectors?.addEventListener("click", async () => {
   if (!handle) return;
   await storage.storeCollectorDirectoryHandle(handle);
   await storage.writeAllCollectorsToDisk();
-  await logger.log("INFO", "fs", "Picked collector folder");
+  await logger.log("INFO", "fs", "Picked collector folder", {
+    name: handle.name || ""
+  });
+  const restored = await storage.restoreCollectorDirectory();
+  await logger.log("INFO", "fs", "Collector handle stored", {
+    stored: Boolean(restored),
+    name: restored?.name || ""
+  });
+  const collectorState = await storage.getCollectorHandleState();
+  await logger.log("INFO", "fs", "Collector handle state", collectorState);
   await writeSettings({ collectorFolderLabel: handle.name || "" });
-  if (handle) {
-    try {
-      await chrome.runtime.sendMessage({
-        type: "STORE_COLLECTOR_HANDLE",
-        handle
-      });
-    } catch (error) {
-      showNotice(document, "Failed to sync folder");
-    }
-  }
   if (settingsCollectorsPath) {
     settingsCollectorsPath.textContent = handle.name || "Not set";
   }
   await updateSettingsUI({ preferExistingPaths: true });
 });
 
-settingsPickVault?.addEventListener("click", async () => {
-  const handle = await storage.requestVaultDirectory();
-  if (!handle) return;
-  await storage.storeVaultDirectoryHandle(handle);
-  await logger.log("INFO", "fs", "Picked vault folder");
-  await writeSettings({ vaultFolderLabel: handle.name || "" });
-  if (handle) {
-    try {
-      await chrome.runtime.sendMessage({
-        type: "STORE_VAULT_HANDLE",
-        handle
-      });
-    } catch (error) {
-      showNotice(document, "Failed to sync folder");
-    }
-  }
-  if (settingsVaultPath) {
-    settingsVaultPath.textContent = handle.name || "Not set";
-  }
-  await updateSettingsUI({ preferExistingPaths: true });
-});
 
 settingsModeInputs.forEach((input) => {
   input.addEventListener("change", async (event) => {

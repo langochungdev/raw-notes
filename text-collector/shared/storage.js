@@ -51,6 +51,19 @@ async function removeHandle(key) {
   });
 }
 
+const isDirectoryHandle = (handle) =>
+  Boolean(handle) &&
+  handle.kind === "directory" &&
+  typeof handle.queryPermission === "function" &&
+  typeof handle.requestPermission === "function";
+
+const summarizeHandle = (handle) => ({
+  exists: Boolean(handle),
+  kind: handle?.kind || "",
+  name: handle?.name || ""
+});
+
+
 const SHARE_ENDPOINTS = {
   create: "https://rentry.co/api/new",
   update: "https://rentry.co/api/edit",
@@ -632,56 +645,52 @@ export class StorageService {
   async storeCollectorDirectoryHandle(handle) {
     if (!handle) return null;
     await setHandle(STORAGE_KEYS.FS_HANDLE, handle);
-    try {
-      await chrome.storage.local.set({ [STORAGE_KEYS.FS_HANDLE]: handle });
-    } catch (error) {
-      await Promise.resolve();
-    }
     return handle;
   }
 
   async storeVaultDirectoryHandle(handle) {
     if (!handle) return null;
     await setHandle(STORAGE_KEYS.VAULT_HANDLE, handle);
-    try {
-      await chrome.storage.local.set({ [STORAGE_KEYS.VAULT_HANDLE]: handle });
-    } catch (error) {
-      await Promise.resolve();
-    }
     return handle;
   }
 
   async restoreCollectorDirectory() {
-    try {
-      const stored = await chrome.storage.local.get(STORAGE_KEYS.FS_HANDLE);
-      if (stored?.[STORAGE_KEYS.FS_HANDLE]) {
-        return stored[STORAGE_KEYS.FS_HANDLE];
-      }
-    } catch (error) {
-      await Promise.resolve();
+    const handle = await getHandle(STORAGE_KEYS.FS_HANDLE);
+    if (isDirectoryHandle(handle)) {
+      return handle;
     }
-    return getHandle(STORAGE_KEYS.FS_HANDLE);
+    if (handle) {
+      await removeHandle(STORAGE_KEYS.FS_HANDLE);
+    }
+    return null;
   }
 
   async restoreVaultDirectory() {
-    let handle = null;
-    try {
-      const stored = await chrome.storage.local.get(STORAGE_KEYS.VAULT_HANDLE);
-      if (stored?.[STORAGE_KEYS.VAULT_HANDLE]) {
-        handle = stored[STORAGE_KEYS.VAULT_HANDLE];
-      }
-    } catch (error) {
+    let handle = await getHandle(STORAGE_KEYS.VAULT_HANDLE);
+    if (handle && !isDirectoryHandle(handle)) {
+      await removeHandle(STORAGE_KEYS.VAULT_HANDLE);
       handle = null;
-    }
-    if (!handle) {
-      handle = await getHandle(STORAGE_KEYS.VAULT_HANDLE);
     }
     try {
       console.debug("restoreVaultDirectory handle:", handle);
     } catch (e) {
-      // ignore
+      await Promise.resolve();
     }
     return handle;
+  }
+
+  async getCollectorHandleState() {
+    const idb = await getHandle(STORAGE_KEYS.FS_HANDLE);
+    return {
+      idb: summarizeHandle(idb)
+    };
+  }
+
+  async getVaultHandleState() {
+    const idb = await getHandle(STORAGE_KEYS.VAULT_HANDLE);
+    return {
+      idb: summarizeHandle(idb)
+    };
   }
 
   async clearCollectorDirectory() {

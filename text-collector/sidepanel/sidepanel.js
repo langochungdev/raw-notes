@@ -105,14 +105,6 @@ const setView = (nextView) => {
   renderSaveStatus();
 };
 
-const renderSaveStatus = () => {
-  if (app.view !== "editor") {
-    saveStatus.textContent = "";
-    return;
-  }
-  saveStatus.textContent = "Saved";
-};
-
 const setEmptyState = (message, buttonLabel) => {
   emptyMessage.textContent = message;
   pickVaultEmptyButton.textContent = buttonLabel;
@@ -873,9 +865,31 @@ document.addEventListener("pointerdown", (event) => {
   }
 });
 
-const pickVault = async () => {
-  const handle = await storage.requestVaultDirectory();
-  if (!handle) return;
+const pickVault = async (options = {}) => {
+  const forcePicker = Boolean(options.forcePicker);
+  let handle = null;
+  if (!forcePicker) {
+    handle = await storage.restoreVaultDirectory();
+    if (handle) {
+      const permission = await storage.requestVaultPermission();
+      await logger.log("INFO", "vault", "Vault permission request", {
+        permission
+      });
+      if (permission !== "granted") {
+        setEmptyState("Ket noi lai vault", "Xac nhan thu muc");
+        setView("empty");
+        return;
+      }
+    }
+  }
+  if (!handle) {
+    handle = await storage.requestVaultDirectory();
+    if (!handle) return;
+    await logger.log("INFO", "vault", "Picked vault handle", {
+      name: handle.name || "",
+      kind: handle.kind || ""
+    });
+  }
   await editorManager.clearCurrentFile();
   app.vaultHandle = handle;
   app.rootHandle = handle;
@@ -892,21 +906,20 @@ const pickVault = async () => {
 };
 
 const loadVault = async () => {
+  await logger.log("INFO", "vault", "Load vault start", {});
   let handle = await storage.restoreVaultDirectory();
-  if (!handle) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "GET_VAULT_HANDLE"
-      });
-      if (response?.ok && response.handle) {
-        await storage.storeVaultDirectoryHandle(response.handle);
-        handle = response.handle;
-      }
-    } catch (error) {
-      handle = null;
-    }
+  if (handle) {
+    await logger.log("INFO", "vault", "Vault handle restored", {
+      name: handle.name || "",
+      kind: handle.kind || ""
+    });
   }
   if (!handle) {
+    const state = await storage.getVaultHandleState();
+    await logger.log("WARN", "vault", "Vault handle missing", {
+      source: "loadVault",
+      idb: state.idb
+    });
     app.vaultHandle = null;
     app.rootHandle = null;
     app.vaultName = "";
@@ -917,16 +930,19 @@ const loadVault = async () => {
   }
 
   let permission = await storage.queryVaultPermission();
+  await logger.log("INFO", "vault", "Vault permission query", {
+    permission
+  });
   if (permission !== "granted") {
-    permission = await storage.requestVaultPermission();
-  }
-  if (permission !== "granted") {
+    await logger.log("WARN", "vault", "Vault permission not granted", {
+      permission
+    });
     await editorManager.clearCurrentFile();
     app.vaultHandle = null;
     app.rootHandle = null;
     app.vaultName = "";
     setVaultName();
-    setEmptyState("Kết nối lại vault", "Kết nối lại vault");
+    setEmptyState("Ket noi lai vault", "Xac nhan thu muc");
     setView("empty");
     return;
   }
@@ -941,6 +957,9 @@ const loadVault = async () => {
   await loadOrderMap();
   setView("tree");
   await refreshTree();
+  await logger.log("INFO", "vault", "Vault loaded", {
+    name: app.vaultName || ""
+  });
 };
 
 const createRootFile = async () => {
@@ -965,8 +984,8 @@ const createRootFolder = async () => {
   await refreshTree();
 };
 
-pickVaultEmptyButton.addEventListener("click", pickVault);
-vaultSwitchButton.addEventListener("click", pickVault);
+pickVaultEmptyButton.addEventListener("click", () => pickVault());
+vaultSwitchButton.addEventListener("click", () => pickVault({ forcePicker: true }));
 createFileButton.addEventListener("click", createRootFile);
 createFolderButton.addEventListener("click", createRootFolder);
 backToTreeButton.addEventListener("click", async () => {
