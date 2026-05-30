@@ -216,6 +216,57 @@
             </div>
         </div>
     </div>
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-panel settings-panel">
+            <div class="modal-header">
+                <div class="modal-title" id="settings-title">Settings</div>
+                <div class="modal-actions">
+                    <button id="settings-close" type="button">Close</button>
+                </div>
+            </div>
+            <div class="settings-body">
+                <div class="settings-section">
+                    <div class="settings-section-title">Storage</div>
+                    <div class="settings-row">
+                        <div class="settings-label">Quick notes folder</div>
+                        <div class="settings-field">
+                            <div id="settings-collectors-path" class="settings-path">Not set</div>
+                            <button id="settings-pick-collectors" type="button">Choose</button>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-label">Sidebar notes folder</div>
+                        <div class="settings-field">
+                            <div id="settings-vault-path" class="settings-path">Not set</div>
+                            <button id="settings-pick-vault" type="button">Choose</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Sidebar open</div>
+                    <div class="settings-options">
+                        <label class="settings-option">
+                            <input type="radio" name="sidebar-open-mode" value="float" />
+                            <span>Floating button only</span>
+                        </label>
+                        <label class="settings-option">
+                            <input type="radio" name="sidebar-open-mode" value="shortcut" />
+                            <span>Shortcut only</span>
+                        </label>
+                        <label class="settings-option">
+                            <input type="radio" name="sidebar-open-mode" value="both" />
+                            <span>Shortcut + button</span>
+                        </label>
+                    </div>
+                    <div class="settings-row">
+                        <label class="settings-label" for="settings-shortcut">Shortcut</label>
+                        <input id="settings-shortcut" class="settings-input" type="text" placeholder="Press keys" readonly />
+                        <div class="settings-help">Focus and press keys to set a shortcut.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="../vendor/minisearch.min.js"></script>
     <script type="module" src="manager.js"></script>
 </body>

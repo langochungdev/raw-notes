@@ -2,6 +2,7 @@ import { StorageService } from "../shared/storage.js";
 import { Logger } from "../shared/logger.js";
 import { checkAndMigrateSchema } from "../shared/schema_migration.js";
 import { SearchService } from "../shared/search.js";
+import { STORAGE_KEYS } from "../shared/constants.js";
 import {
   renderCollectors,
   renderItems,
@@ -28,6 +29,16 @@ const newCollectorNameInput = document.getElementById("new-collector-name");
 const collectorSelectToggle = document.getElementById("collector-select-toggle");
 const collectorDeleteSelected = document.getElementById("collector-delete-selected");
 const pickFolderButton = document.getElementById("pick-folder");
+const settingsModal = document.getElementById("settings-modal");
+const settingsCloseButton = document.getElementById("settings-close");
+const settingsCollectorsPath = document.getElementById("settings-collectors-path");
+const settingsVaultPath = document.getElementById("settings-vault-path");
+const settingsPickCollectors = document.getElementById("settings-pick-collectors");
+const settingsPickVault = document.getElementById("settings-pick-vault");
+const settingsShortcutInput = document.getElementById("settings-shortcut");
+const settingsModeInputs = Array.from(
+  document.querySelectorAll("input[name=\"sidebar-open-mode\"]")
+);
 const manualEntryToggle = document.getElementById("manual-entry-toggle");
 const searchInput = document.getElementById("search");
 const searchCollectorsToggle = document.getElementById("search-collectors-toggle");
@@ -73,6 +84,25 @@ let isCollectorSelectMode = false;
 let searchCollectorIds = ["__all__"];
 let isSearchCollectorOpen = false;
 let reloadAllData = async () => {};
+const DEFAULT_SETTINGS = {
+  sidebarOpenMode: "float",
+  sidebarShortcut: ""
+};
+let settingsState = { ...DEFAULT_SETTINGS };
+
+const readSettings = async () => {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
+  const value = stored[STORAGE_KEYS.SETTINGS] || {};
+  settingsState = { ...DEFAULT_SETTINGS, ...value };
+  return settingsState;
+};
+
+const writeSettings = async (updates) => {
+  const next = { ...settingsState, ...updates };
+  settingsState = next;
+  await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: next });
+  return next;
+};
 
 const handleCopyShare = async (item) => {
   if (!item?.shareUrl) return;
@@ -183,6 +213,54 @@ const toggleSearchCollectorPanel = () => {
 
 const searchService = new SearchService();
 
+const formatShortcut = (event) => {
+  const key = event.key || "";
+  const isModifier = ["Control", "Shift", "Alt", "Meta"].includes(key);
+  if (isModifier) return "";
+  const parts = [];
+  if (event.ctrlKey) parts.push("Ctrl");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+  if (event.metaKey) parts.push("Meta");
+  let main = key;
+  if (main === " ") main = "Space";
+  if (main === "Escape") main = "Esc";
+  if (main.length === 1) {
+    main = main.toUpperCase();
+  }
+  parts.push(main);
+  return parts.join("+");
+};
+
+const updateSettingsUI = async () => {
+  await readSettings();
+  settingsModeInputs.forEach((input) => {
+    input.checked = input.value === settingsState.sidebarOpenMode;
+  });
+  if (settingsShortcutInput) {
+    settingsShortcutInput.value = settingsState.sidebarShortcut || "";
+  }
+  if (settingsCollectorsPath) {
+    const handle = await storage.restoreCollectorDirectory();
+    settingsCollectorsPath.textContent = handle?.name || "Not set";
+  }
+  if (settingsVaultPath) {
+    const handle = await storage.restoreVaultDirectory();
+    settingsVaultPath.textContent = handle?.name || "Not set";
+  }
+};
+
+const openSettings = async () => {
+  if (!settingsModal) return;
+  await updateSettingsUI();
+  settingsModal.classList.remove("hidden");
+};
+
+const closeSettings = () => {
+  if (!settingsModal) return;
+  settingsModal.classList.add("hidden");
+};
+
 const editModalManager = createEditModal({
   modal: editModal,
   saveButton: editSaveButton,
@@ -292,9 +370,62 @@ newCollectorNameInput.addEventListener("keydown", async (event) => {
 });
 
 pickFolderButton.addEventListener("click", async () => {
+  await openSettings();
+});
+
+settingsCloseButton?.addEventListener("click", () => {
+  closeSettings();
+});
+
+settingsModal?.addEventListener("pointerdown", (event) => {
+  if (event.target === settingsModal) {
+    closeSettings();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!settingsModal || settingsModal.classList.contains("hidden")) return;
+  if (event.key === "Escape") {
+    closeSettings();
+  }
+});
+
+settingsPickCollectors?.addEventListener("click", async () => {
   await storage.requestCollectorDirectory();
   await storage.writeAllCollectorsToDisk();
   await logger.log("INFO", "fs", "Picked collector folder");
+  await updateSettingsUI();
+});
+
+settingsPickVault?.addEventListener("click", async () => {
+  await storage.requestVaultDirectory();
+  await logger.log("INFO", "fs", "Picked vault folder");
+  await updateSettingsUI();
+});
+
+settingsModeInputs.forEach((input) => {
+  input.addEventListener("change", async (event) => {
+    const target = event.target;
+    if (!target?.value) return;
+    await writeSettings({ sidebarOpenMode: target.value });
+    showNotice(document, "Saved");
+  });
+});
+
+settingsShortcutInput?.addEventListener("keydown", async (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.key === "Backspace" || event.key === "Delete") {
+    await writeSettings({ sidebarShortcut: "" });
+    settingsShortcutInput.value = "";
+    showNotice(document, "Shortcut cleared");
+    return;
+  }
+  const next = formatShortcut(event);
+  if (!next) return;
+  await writeSettings({ sidebarShortcut: next });
+  settingsShortcutInput.value = next;
+  showNotice(document, "Shortcut saved");
 });
 
 searchInput.addEventListener("input", () => {

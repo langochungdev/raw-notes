@@ -17,6 +17,12 @@
   let lastSource = null;
   let lastRect = null;
   let currentUrl = window.location.href;
+  const SETTINGS_KEY = "tc_settings";
+  const DEFAULT_SETTINGS = {
+    sidebarOpenMode: "float",
+    sidebarShortcut: ""
+  };
+  let settingsState = { ...DEFAULT_SETTINGS };
   let resolveSource = () => ({
     url: currentUrl,
     title: document.title || "",
@@ -186,6 +192,59 @@
     }
   };
 
+  const normalizeShortcutKey = (key) => {
+    if (key === " ") return "Space";
+    if (key === "Escape") return "Esc";
+    if (key.length === 1) return key.toUpperCase();
+    return key;
+  };
+
+  const formatShortcutEvent = (event) => {
+    const key = event.key || "";
+    const isModifier = ["Control", "Shift", "Alt", "Meta"].includes(key);
+    if (isModifier) return "";
+    const parts = [];
+    if (event.ctrlKey) parts.push("Ctrl");
+    if (event.altKey) parts.push("Alt");
+    if (event.shiftKey) parts.push("Shift");
+    if (event.metaKey) parts.push("Meta");
+    parts.push(normalizeShortcutKey(key));
+    return parts.join("+");
+  };
+
+  const isEditableTarget = (target) => {
+    if (!target) return false;
+    if (target.isContentEditable) return true;
+    const tag = target.tagName ? target.tagName.toLowerCase() : "";
+    return tag === "input" || tag === "textarea" || tag === "select";
+  };
+
+  const applySidebarMode = () => {
+    const mode = settingsState.sidebarOpenMode;
+    const allowFloat = mode === "float" || mode === "both";
+    if (edgeButton) {
+      edgeButton.style.display = allowFloat ? "flex" : "none";
+    }
+    if (!allowFloat) {
+      setEdgeSuppressed(true);
+    } else {
+      setEdgeSuppressed(false);
+      checkSidepanelState(false);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const stored = await chrome.storage.local.get(SETTINGS_KEY);
+      const next = stored[SETTINGS_KEY] || {};
+      settingsState = { ...DEFAULT_SETTINGS, ...next };
+      applySidebarMode();
+    } catch (error) {
+      settingsState = { ...DEFAULT_SETTINGS };
+      applySidebarMode();
+    }
+  };
+
   const checkSidepanelState = async (showIfClosed) => {
     if (stateCheckInFlight) return;
     const now = Date.now();
@@ -332,6 +391,15 @@
 
   createButton();
   patchHistory();
+  await loadSettings();
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local") return;
+    if (!changes[SETTINGS_KEY]) return;
+    const next = changes[SETTINGS_KEY].newValue || {};
+    settingsState = { ...DEFAULT_SETTINGS, ...next };
+    applySidebarMode();
+  });
 
   document.addEventListener("mouseup", () => {
     setTimeout(onSelection, 0);
@@ -341,10 +409,21 @@
     closePanel();
   }, true);
 
-  document.addEventListener("keydown", (event) => {
+  document.addEventListener("keydown", async (event) => {
     if (event.key === "Escape") {
       closePanel();
+      return;
     }
+    if (isEditableTarget(event.target)) return;
+    const mode = settingsState.sidebarOpenMode;
+    if (mode !== "shortcut" && mode !== "both") return;
+    if (!settingsState.sidebarShortcut) return;
+    const pressed = formatShortcutEvent(event);
+    if (!pressed) return;
+    if (pressed !== settingsState.sidebarShortcut) return;
+    event.preventDefault();
+    event.stopPropagation();
+    await chrome.runtime.sendMessage({ type: "OPEN_SIDEPANEL" });
   });
 
   window.addEventListener("mousemove", (event) => {

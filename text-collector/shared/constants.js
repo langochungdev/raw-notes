@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   VAULT_SHARES: "tc_vault_shares",
   VAULT_ORDER: "tc_vault_order",
   LOGS: "tc_logs",
+  SETTINGS: "tc_settings",
   FS_HANDLE: "tc_fs_handle",
   VAULT_HANDLE: "tc_vault_handle"
 };
