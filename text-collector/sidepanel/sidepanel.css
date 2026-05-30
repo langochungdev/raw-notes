@@ -43,29 +43,13 @@ button {
     flex-direction: column;
 }
 
-.shell-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 56px;
-    padding: 0 14px;
-    border-bottom: 1px solid var(--border);
-    background: #101010;
-}
-
-.shell-title {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
 .shell-main {
     flex: 1;
     min-height: 0;
 }
 
 .state {
-    min-height: calc(100vh - 56px);
+    min-height: 100vh;
 }
 
 .hidden {
@@ -131,7 +115,7 @@ button {
 .state-editor {
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 56px);
+    min-height: 100vh;
 }
 
 .tree-toolbar {
@@ -300,8 +284,8 @@ button {
 }
 
 .state-editor {
-    padding: 12px 14px 14px;
-    gap: 12px;
+    padding: 0;
+    gap: 0;
 }
 
 .editor-topbar {
@@ -309,6 +293,9 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #0f0f0f;
 }
 
 .back-button {
@@ -323,9 +310,10 @@ button {
 .editor-card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     min-height: 0;
     flex: 1;
+    padding: 10px 12px 12px;
 }
 
 .file-name-input {
@@ -352,20 +340,52 @@ button {
 
 .editor-body {
     width: 100%;
-    min-height: calc(100vh - 180px);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: #0c0c0c;
+    min-height: 0;
+    border-radius: 10px;
+    border: 1px solid #1f1f1f;
+    background: #0f0f0f;
     color: var(--text);
-    padding: 14px 14px 18px;
+    padding: 0;
     font-size: 16px;
     line-height: 1.7;
     outline: none;
     overflow: auto;
+    caret-color: var(--text);
 }
 
-.editor-body:focus {
-    border-color: #3b3b3b;
+.editor-body:focus,
+.editor-body:focus-within {
+    border-color: #1f1f1f;
+    outline: none;
+}
+
+.editor-body .ProseMirror {
+    min-height: calc(100vh - 220px);
+    padding: 0;
+    outline: none;
+    caret-color: var(--text);
+}
+
+.editor-body .ProseMirror:focus {
+    outline: none;
+}
+
+.editor-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+
+.editor-body th,
+.editor-body td {
+    border: 1px solid #2a2a2a;
+    padding: 8px 10px;
+    text-align: left;
+}
+
+.editor-body th {
+    background: #151515;
+    font-weight: 600;
 }
 
 .editor-body:empty::before {

@@ -1,5 +1,6 @@
 import { Editor, rootCtx, defaultValueCtx } from "@milkdown/kit/core";
 import { commonmark } from "@milkdown/kit/preset/commonmark";
+import { gfm } from "@milkdown/kit/preset/gfm";
 import { history } from "@milkdown/kit/plugin/history";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { replaceAll, insert } from "@milkdown/kit/utils";
@@ -35,6 +36,7 @@ export async function mountMilkdownEditor(root, options = {}) {
         });
       })
       .use(commonmark)
+      .use(gfm)
       .use(history)
       .use(listener)
       .create();
