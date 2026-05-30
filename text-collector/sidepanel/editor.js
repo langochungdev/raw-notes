@@ -1,6 +1,8 @@
 export const createEditorManager = ({
   fileNameInput,
   editorBody,
+  rawEditor,
+  getEditorMode,
   saveStatus,
   getRootHandle,
   onFileOpened,
@@ -28,6 +30,9 @@ export const createEditorManager = ({
   };
 
   const readEditorText = async () => {
+    if (getEditorMode?.() === "raw" && rawEditor) {
+      return rawEditor.value || "";
+    }
     const controller = await getEditorController();
     if (controller?.getMarkdown) {
       return controller.getMarkdown();
@@ -36,6 +41,9 @@ export const createEditorManager = ({
   };
 
   const writeEditorText = async (text) => {
+    if (rawEditor) {
+      rawEditor.value = text || "";
+    }
     const controller = await getEditorController();
     if (controller?.setMarkdown) {
       await controller.setMarkdown(text || "");
@@ -55,6 +63,9 @@ export const createEditorManager = ({
       editorBody.contentEditable = enabled ? "true" : "false";
     }
     fileNameInput.disabled = !enabled;
+    if (rawEditor) {
+      rawEditor.disabled = !enabled;
+    }
   };
 
   const sanitizeFileName = (name) => {
@@ -201,11 +212,43 @@ export const createEditorManager = ({
 
   const getCurrentFileName = () => currentFileName;
   const getCurrentPath = () => currentPath;
+  const getCurrentFileHandle = () => currentFileHandle;
+  const getCurrentText = async () => readEditorText();
+  const setCurrentText = async (text) => {
+    await writeEditorText(text || "");
+  };
   const focusFileNameInput = () => {
     fileNameInput.focus();
     fileNameInput.select();
   };
+
+  const focusEditor = async () => {
+    if (getEditorMode?.() === "raw" && rawEditor) {
+      rawEditor.focus();
+      return;
+    }
+    const controller = await getEditorController();
+    if (controller?.focus) {
+      controller.focus();
+      return;
+    }
+    editorBody?.focus();
+  };
+
   const insertMarkdown = async (markdown) => {
+    if (getEditorMode?.() === "raw" && rawEditor) {
+      const value = rawEditor.value || "";
+      const start = rawEditor.selectionStart ?? value.length;
+      const end = rawEditor.selectionEnd ?? value.length;
+      const insertText = markdown || "";
+      rawEditor.value = value.slice(0, start) + insertText + value.slice(end);
+      const cursorPos = start + insertText.length;
+      rawEditor.selectionStart = cursorPos;
+      rawEditor.selectionEnd = cursorPos;
+      rawEditor.focus();
+      scheduleSave();
+      return;
+    }
     const controller = await getEditorController();
     if (controller?.insertMarkdown) {
       controller.insertMarkdown(markdown || "");
@@ -213,6 +256,34 @@ export const createEditorManager = ({
     }
     if (editorBody) {
       editorBody.innerText += markdown || "";
+      scheduleSave();
+    }
+  };
+
+  const insertTemplate = async (template, marker = "[[CURSOR]]") => {
+    const cursorMarker = marker || "[[CURSOR]]";
+    const insertText = template || "";
+    if (getEditorMode?.() === "raw" && rawEditor) {
+      const value = rawEditor.value || "";
+      const start = rawEditor.selectionStart ?? value.length;
+      const end = rawEditor.selectionEnd ?? value.length;
+      const markerIndex = insertText.indexOf(cursorMarker);
+      const cleanText = markerIndex === -1 ? insertText : insertText.replace(cursorMarker, "");
+      rawEditor.value = value.slice(0, start) + cleanText + value.slice(end);
+      const cursorPos = start + (markerIndex === -1 ? cleanText.length : markerIndex);
+      rawEditor.selectionStart = cursorPos;
+      rawEditor.selectionEnd = cursorPos;
+      rawEditor.focus();
+      scheduleSave();
+      return;
+    }
+    const controller = await getEditorController();
+    if (controller?.insertTemplate) {
+      controller.insertTemplate(insertText, cursorMarker);
+      return;
+    }
+    if (editorBody) {
+      editorBody.innerText += insertText.replace(cursorMarker, "");
       scheduleSave();
     }
   };
@@ -227,8 +298,13 @@ export const createEditorManager = ({
     setEnabled,
     getCurrentFileName,
     getCurrentPath,
+    getCurrentFileHandle,
+    getCurrentText,
+    setCurrentText,
     focusFileNameInput,
+    focusEditor,
     insertMarkdown,
+    insertTemplate,
     writeCurrentFile
   };
 };

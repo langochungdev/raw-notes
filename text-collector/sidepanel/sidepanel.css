@@ -294,17 +294,34 @@ button {
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
-    background: #0f0f0f;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(15, 15, 15, 0.82);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.editor-topbar-left,
+.editor-topbar-center,
+.editor-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-topbar-center {
+    flex: 1;
+    min-width: 0;
+}
+
+.editor-topbar-right {
+    flex: 0 0 auto;
 }
 
 .back-button {
     padding: 0 12px;
-}
-
-.save-status {
-    font-size: 12px;
-    color: var(--muted);
 }
 
 .editor-card {
@@ -318,13 +335,13 @@ button {
 
 .file-name-input {
     width: 100%;
-    height: 44px;
-    border-radius: 12px;
+    height: 34px;
+    border-radius: 10px;
     border: 1px solid var(--border);
     background: #101010;
     color: var(--text);
-    padding: 0 14px;
-    font-size: 20px;
+    padding: 0 12px;
+    font-size: 1rem;
     font-weight: 600;
 }
 
@@ -338,11 +355,47 @@ button {
     min-height: 0;
 }
 
+.mode-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #171717;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.mode-button.icon-only {
+    width: 32px;
+    padding: 0;
+    font-size: 14px;
+    letter-spacing: 0;
+}
+
+.icon-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+@media (hover: hover) {
+    .mode-button:hover {
+        background: #202020;
+        border-color: #343434;
+    }
+}
+
 .editor-body {
     width: 100%;
     min-height: 0;
     border-radius: 10px;
-    border: 1px solid #1f1f1f;
+    border: 0;
     background: #0f0f0f;
     color: var(--text);
     padding: 0;
@@ -353,11 +406,27 @@ button {
     caret-color: var(--text);
 }
 
+.raw-editor {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    border: 0;
+    background: #0f0f0f;
+    color: var(--text);
+    padding: 12px;
+    font-size: 1rem;
+    line-height: 1.7;
+    outline: none;
+    resize: none;
+}
+
 .editor-body:focus,
 .editor-body:focus-within {
-    border-color: #1f1f1f;
     outline: none;
 }
+
 
 .editor-body .ProseMirror {
     min-height: calc(100vh - 220px);
@@ -398,12 +467,12 @@ button {
 .tree-menu {
     position: fixed;
     z-index: 2147483647;
-    min-width: 180px;
-    padding: 6px;
+    min-width: 160px;
+    padding: 2px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 8px;
     background: #111;
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
 }
 
 .slash-menu button,
@@ -414,8 +483,8 @@ button {
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    padding: 10px 10px;
-    border-radius: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
     background: transparent;
     color: var(--text);
     font-size: 13px;
@@ -428,12 +497,8 @@ button {
     background: #1b1b1b;
 }
 
-.slash-menu .menu-title {
-    padding: 6px 10px 8px;
-    font-size: 11px;
-    color: var(--muted-2);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+.slash-menu button.active {
+    background: #1b1b1b;
 }
 
 .node-menu button.danger,

@@ -4,6 +4,7 @@ import { gfm } from "@milkdown/kit/preset/gfm";
 import { history } from "@milkdown/kit/plugin/history";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { replaceAll, insert } from "@milkdown/kit/utils";
+import { TextSelection } from "@milkdown/kit/prose/state";
 
 export async function mountMilkdownEditor(root, options = {}) {
   if (!root) {
@@ -47,6 +48,18 @@ export async function mountMilkdownEditor(root, options = {}) {
 
   await create(state.currentMarkdown);
 
+  const findMarker = (doc, marker) => {
+    let found = null;
+    doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return true;
+      const index = node.text.indexOf(marker);
+      if (index === -1) return true;
+      found = { from: pos + index, to: pos + index + marker.length };
+      return false;
+    });
+    return found;
+  };
+
   const controller = {
     async setMarkdown(markdown) {
       const nextMarkdown = markdown || "";
@@ -67,6 +80,25 @@ export async function mountMilkdownEditor(root, options = {}) {
     insertMarkdown(markdown) {
       if (!state.editor) return;
       state.editor.action(insert(markdown || "", true));
+    },
+    insertTemplate(markdown, marker = "[[CURSOR]]") {
+      if (!state.editor) return;
+      const template = markdown || "";
+      const cursorMarker = marker || "[[CURSOR]]";
+      state.editor.action((ctx) => {
+        insert(template, true)(ctx);
+        const view = ctx.get("editorView");
+        if (!view) return;
+        const match = findMarker(view.state.doc, cursorMarker);
+        if (!match) {
+          view.focus();
+          return;
+        }
+        const tr = view.state.tr.delete(match.from, match.to);
+        tr.setSelection(TextSelection.create(tr.doc, match.from));
+        view.dispatch(tr);
+        view.focus();
+      });
     },
     getMarkdown() {
       return state.currentMarkdown;

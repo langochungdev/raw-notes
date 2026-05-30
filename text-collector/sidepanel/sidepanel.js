@@ -20,26 +20,34 @@ const treeFooterEl = document.getElementById("tree-footer");
 const backToTreeButton = document.getElementById("back-to-tree");
 const fileNameInput = document.getElementById("file-name");
 const editorBody = document.getElementById("editor-body");
+const rawEditor = document.getElementById("raw-editor");
 const saveStatus = document.getElementById("save-status");
+const editorModeButton = document.getElementById("editor-mode");
+const viewFileButton = document.getElementById("view-file");
 const slashMenu = document.getElementById("slash-menu");
 const nodeMenu = document.getElementById("node-menu");
 
 editorBody.dataset.placeholder = "Dòng đầu tiên là tên file...";
 
+const CURSOR_MARKER = "[[CURSOR]]";
 const SLASH_OPTIONS = [
-  { label: "Heading # H1", insert: "# Heading\n" },
-  { label: "Heading ## H2", insert: "## Heading\n" },
-  { label: "Heading ### H3", insert: "### Heading\n" },
-  { label: "Todo list", insert: "- [ ] Todo item\n" },
-  { label: "Table", insert: "| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n" },
-  { label: "Code block", insert: "```lang\n\n```\n" },
-  { label: "Blockquote", insert: "> Quote\n" },
-  { label: "Highlight", insert: "==text==" },
-  { label: "Divider", insert: "---\n" },
-  { label: "Image", insert: "![alt](url)" },
-  { label: "Link", insert: "[text](url)" },
-  { label: "Math block", insert: "$$\n\n$$\n" }
-];
+  { label: "Heading 1", template: `# ${CURSOR_MARKER}\n`, keywords: ["h1", "heading"] },
+  { label: "Heading 2", template: `## ${CURSOR_MARKER}\n`, keywords: ["h2", "heading"] },
+  { label: "Heading 3", template: `### ${CURSOR_MARKER}\n`, keywords: ["h3", "heading"] },
+  { label: "Todo list", template: `- [ ] ${CURSOR_MARKER}\n`, keywords: ["todo", "task", "checkbox", "to"] },
+  { label: "Toggle", template: `<details>\n<summary>${CURSOR_MARKER}</summary>\n\n</details>\n`, keywords: ["toggle", "details", "to"] },
+  { label: "Table", template: `| ${CURSOR_MARKER} |  |\n| --- | --- |\n|  |  |\n`, keywords: ["table", "tab", "ta"] },
+  { label: "Code block", template: `\`\`\`\n${CURSOR_MARKER}\n\`\`\`\n`, keywords: ["code", "block"] },
+  { label: "Blockquote", template: `> ${CURSOR_MARKER}\n`, keywords: ["quote"] },
+  { label: "Highlight", template: `==${CURSOR_MARKER}==`, keywords: ["highlight", "mark"] },
+  { label: "Divider", template: "---\n", keywords: ["divider", "hr"] },
+  { label: "Image", template: `![${CURSOR_MARKER}]()`, keywords: ["image", "img"] },
+  { label: "Link", template: `[${CURSOR_MARKER}]()`, keywords: ["link", "url"] },
+  { label: "Math block", template: `$$\n${CURSOR_MARKER}\n$$\n`, keywords: ["math", "latex"] }
+].map((option) => {
+  const search = `${option.label} ${option.keywords?.join(" ") || ""}`.toLowerCase();
+  return { ...option, search };
+});
 
 const app = {
   vaultHandle: null,
@@ -49,8 +57,7 @@ const app = {
   expandedPaths: new Set(),
   view: "empty",
   fileCount: 0,
-  lastSavedAt: null,
-  saveTicker: null
+  editorMode: "live"
 };
 
 const setView = (nextView) => {
@@ -61,13 +68,9 @@ const setView = (nextView) => {
   if (nextView !== "editor") {
     closeSlashMenu();
   }
-  if (nextView !== "editor" && app.saveTicker) {
-    clearInterval(app.saveTicker);
-    app.saveTicker = null;
-  }
-  if (nextView === "editor" && !app.saveTicker) {
-    app.saveTicker = setInterval(renderSaveStatus, 1000);
-  }
+  const editorEnabled = nextView === "editor";
+  editorModeButton.disabled = !editorEnabled;
+  viewFileButton.disabled = !editorEnabled;
   renderSaveStatus();
 };
 
@@ -76,12 +79,7 @@ const renderSaveStatus = () => {
     saveStatus.textContent = "";
     return;
   }
-  if (!app.lastSavedAt) {
-    saveStatus.textContent = "Saved";
-    return;
-  }
-  const seconds = Math.max(0, Math.floor((Date.now() - app.lastSavedAt) / 1000));
-  saveStatus.textContent = `Saved · ${seconds}s ago`;
+  saveStatus.textContent = "Saved";
 };
 
 const setEmptyState = (message, buttonLabel) => {
@@ -215,7 +213,6 @@ const tree = createVaultTree({
   toggleExpandedPath,
   onOpenFile: async ({ handle, parentHandle, path }) => {
     app.activePath = path;
-    app.lastSavedAt = Date.now();
     setView("editor");
     await editorManager.openFile({
       handle,
@@ -236,6 +233,8 @@ const tree = createVaultTree({
 const editorManager = createEditorManager({
   fileNameInput,
   editorBody,
+  rawEditor,
+  getEditorMode: () => app.editorMode,
   saveStatus,
   getRootHandle: () => app.rootHandle,
   onFileOpened: async ({ path }) => {
@@ -254,39 +253,135 @@ const editorManager = createEditorManager({
     }
   },
   onMarkSaved: () => {
-    app.lastSavedAt = Date.now();
     renderSaveStatus();
   }
 });
 
+const updateEditorModeUI = () => {
+  const isLive = app.editorMode === "live";
+  editorModeButton.textContent = isLive ? "Live" : "Raw";
+  editorModeButton.setAttribute("aria-pressed", isLive ? "true" : "false");
+  editorModeButton.title = isLive ? "Switch to raw edit" : "Switch to live edit";
+  editorBody.classList.toggle("hidden", !isLive);
+  rawEditor.classList.toggle("hidden", isLive);
+};
+
+const setEditorMode = async (nextMode) => {
+  const targetMode = nextMode === "raw" ? "raw" : "live";
+  if (app.editorMode === targetMode) {
+    updateEditorModeUI();
+    return;
+  }
+  if (targetMode === "raw") {
+    const text = await editorManager.getCurrentText();
+    rawEditor.value = text || "";
+  } else {
+    await editorManager.setCurrentText(rawEditor.value || "");
+    editorManager.scheduleSave();
+  }
+  app.editorMode = targetMode;
+  updateEditorModeUI();
+  editorManager.focusEditor();
+};
+
+updateEditorModeUI();
+
+const slashState = {
+  open: false,
+  query: "",
+  index: 0,
+  items: [],
+  anchorRect: null
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const getCaretRect = () => {
+  if (document.activeElement === rawEditor) {
+    const rect = rawEditor.getBoundingClientRect();
+    return {
+      left: rect.left + 12,
+      right: rect.left + 12,
+      top: rect.top + 12,
+      bottom: rect.top + 32,
+      width: 0,
+      height: 0
+    };
+  }
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0).cloneRange();
+  if (!range.collapsed) {
+    range.collapse(false);
+  }
+  const rects = range.getClientRects();
+  if (rects.length > 0) return rects[0];
+  const rect = range.getBoundingClientRect();
+  if (rect && (rect.width || rect.height)) return rect;
+  return null;
+};
+
+const positionSlashMenu = () => {
+  const fallback = editorBody.getBoundingClientRect();
+  const rect = slashState.anchorRect || fallback;
+  const left = clamp(rect.left, 8, window.innerWidth - 200);
+  const top = clamp(rect.bottom + 6, 8, window.innerHeight - 200);
+  slashMenu.style.left = `${left}px`;
+  slashMenu.style.top = `${top}px`;
+};
+
+const filterSlashOptions = (query) => {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return SLASH_OPTIONS;
+  return SLASH_OPTIONS.filter((option) => option.search.includes(trimmed));
+};
+
+const renderSlashMenu = () => {
+  const options = filterSlashOptions(slashState.query);
+  if (!options.length) {
+    closeSlashMenu();
+    return;
+  }
+  slashState.items = options;
+  slashState.index = clamp(slashState.index, 0, options.length - 1);
+  slashMenu.innerHTML = options.map((option, index) => {
+    const activeClass = index === slashState.index ? "active" : "";
+    return `<button type="button" data-index="${index}" class="${activeClass}">${option.label}</button>`;
+  }).join("");
+  positionSlashMenu();
+  slashMenu.classList.remove("hidden");
+};
+
 const closeSlashMenu = () => {
+  slashState.open = false;
+  slashState.query = "";
+  slashState.index = 0;
+  slashState.items = [];
   slashMenu.classList.add("hidden");
   slashMenu.innerHTML = "";
 };
 
 const openSlashMenu = () => {
-  const rect = editorBody.getBoundingClientRect();
-  slashMenu.innerHTML = `
-    <div class="menu-title">Slash menu</div>
-  ` + SLASH_OPTIONS.map((option) => {
-    return `<button type="button" data-insert="${option.insert.replace(/\n/g, "\\n")}">${option.label}</button>`;
-  }).join("");
-  slashMenu.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
-  slashMenu.style.top = `${Math.min(rect.top + 28, window.innerHeight - 360)}px`;
-  slashMenu.classList.remove("hidden");
+  slashState.open = true;
+  slashState.query = "";
+  slashState.index = 0;
+  slashState.anchorRect = getCaretRect();
+  renderSlashMenu();
 };
 
-const insertFromSlashMenu = async (markdown) => {
+const insertFromSlashMenu = async (option) => {
+  if (!option) return;
   closeSlashMenu();
-  await editorManager.insertMarkdown(markdown.replace(/\\n/g, "\n"));
+  await editorManager.insertTemplate(option.template, CURSOR_MARKER);
   editorManager.scheduleSave();
-  editorBody.focus();
+  editorManager.focusEditor();
 };
 
 slashMenu.addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-insert]");
+  const button = event.target.closest("button[data-index]");
   if (!button) return;
-  await insertFromSlashMenu(button.dataset.insert || "");
+  const index = Number(button.dataset.index || "0");
+  await insertFromSlashMenu(slashState.items[index]);
 });
 
 nodeMenu.addEventListener("click", async (event) => {
@@ -310,7 +405,7 @@ document.addEventListener("pointerdown", (event) => {
   if (!nodeMenu.contains(event.target)) {
     nodeMenu.classList.add("hidden");
   }
-  if (!slashMenu.contains(event.target) && event.target !== editorBody) {
+  if (!slashMenu.contains(event.target) && event.target !== editorBody && event.target !== rawEditor) {
     closeSlashMenu();
   }
 });
@@ -370,7 +465,6 @@ const createRootFile = async () => {
   setView("editor");
   await editorManager.createNewFile({ parentHandle: app.rootHandle });
   app.activePath = editorManager.getCurrentPath();
-  app.lastSavedAt = Date.now();
   renderSaveStatus();
   await tree.renderTree();
 };
@@ -396,6 +490,26 @@ backToTreeButton.addEventListener("click", async () => {
   await tree.renderTree();
 });
 
+editorModeButton.addEventListener("click", async () => {
+  const nextMode = app.editorMode === "live" ? "raw" : "live";
+  await setEditorMode(nextMode);
+});
+
+viewFileButton.addEventListener("click", async () => {
+  const handle = editorManager.getCurrentFileHandle();
+  if (!handle) return;
+  const file = await handle.getFile();
+  const url = URL.createObjectURL(file);
+  window.open(url, "_blank", "noopener");
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+});
+
+rawEditor.addEventListener("input", () => {
+  if (app.editorMode === "raw") {
+    editorManager.scheduleSave();
+  }
+});
+
 fileNameInput.addEventListener("keydown", async (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
@@ -411,8 +525,58 @@ fileNameInput.addEventListener("blur", async () => {
   await tree.renderTree();
 });
 
-editorBody.addEventListener("keydown", (event) => {
+const handleSlashKeydown = async (event) => {
+  if (!slashState.open) return false;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeSlashMenu();
+    return true;
+  }
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    slashState.index = (slashState.index + 1) % slashState.items.length;
+    renderSlashMenu();
+    return true;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    slashState.index = (slashState.index - 1 + slashState.items.length) % slashState.items.length;
+    renderSlashMenu();
+    return true;
+  }
+
+  if (event.key === "Enter" || event.key === "Tab") {
+    event.preventDefault();
+    await insertFromSlashMenu(slashState.items[slashState.index]);
+    return true;
+  }
+
+  if (event.key === "Backspace") {
+    event.preventDefault();
+    slashState.query = slashState.query.slice(0, -1);
+    slashState.index = 0;
+    renderSlashMenu();
+    return true;
+  }
+
+  if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault();
+    slashState.query += event.key;
+    slashState.index = 0;
+    renderSlashMenu();
+    return true;
+  }
+
+  return false;
+};
+
+const handleEditorKeydown = async (event) => {
   if (app.view !== "editor") return;
+  if (await handleSlashKeydown(event)) return;
+
   if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
     event.preventDefault();
     openSlashMenu();
@@ -421,7 +585,10 @@ editorBody.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeSlashMenu();
   }
-});
+};
+
+editorBody.addEventListener("keydown", handleEditorKeydown);
+rawEditor.addEventListener("keydown", handleEditorKeydown);
 
 window.addEventListener("textcollector:markdown-change", () => {
   editorManager.scheduleSave();

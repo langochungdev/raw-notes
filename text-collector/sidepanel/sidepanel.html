@@ -39,13 +39,31 @@
 
             <section id="editor-state" class="state state-editor hidden" aria-label="Editor view">
                 <div class="editor-topbar">
-                    <button id="back-to-tree" type="button" class="back-button">← Back</button>
-                    <div id="save-status" class="save-status">Saved</div>
+                    <div class="editor-topbar-left">
+                        <button id="back-to-tree" type="button" class="back-button" aria-label="Back">
+                            <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M14 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="editor-topbar-center">
+                        <input id="file-name" class="file-name-input" type="text" placeholder="Dòng đầu tiên là tên file..." />
+                    </div>
+                    <div class="editor-topbar-right">
+                        <button id="view-file" type="button" class="mode-button icon-only" aria-label="View file">
+                            <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 2h8l4 4v16H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                                <path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                        <button id="editor-mode" type="button" class="mode-button" aria-pressed="true">Live</button>
+                    </div>
+                    <div id="save-status" class="save-status hidden" aria-hidden="true"></div>
                 </div>
                 <div class="editor-card">
-                    <input id="file-name" class="file-name-input" type="text" placeholder="Dòng đầu tiên là tên file..." />
                     <div class="editor-wrap">
                         <div id="editor-body" class="editor-body" aria-label="Note editor"></div>
+                        <textarea id="raw-editor" class="raw-editor hidden" aria-label="Raw markdown editor" spellcheck="false"></textarea>
                         <div id="slash-menu" class="slash-menu hidden" role="menu" aria-label="Slash menu"></div>
                     </div>
                 </div>
