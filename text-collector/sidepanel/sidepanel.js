@@ -130,6 +130,19 @@ const updateExpandedPrefixesAfterRename = (oldPath, nextPath) => {
 };
 
 const sanitizeName = (value) => value.replace(/[\\/:*?"<>|]/g, "").trim();
+const stripMarkdownExtension = (value) => value.replace(/\.md$/i, "");
+const getParentPath = (path) => {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? "" : path.slice(0, index);
+};
+const getEntryName = (path) => {
+  const index = path.lastIndexOf("/");
+  return index === -1 ? path : path.slice(index + 1);
+};
+
+const orderState = {
+  map: {}
+};
 
 const copyFileToDirectory = async (fileHandle, targetDir, targetName) => {
   const file = await fileHandle.getFile();
@@ -160,14 +173,16 @@ const renameEntry = async (entryInfo, nextName) => {
   if (!sanitized) return;
 
   const finalName = entry.kind === "file" && !sanitized.endsWith(".md")
-    ? `${sanitized}.md`
+    ? `${stripMarkdownExtension(sanitized)}.md`
     : sanitized;
   if (finalName === entry.name) return;
 
   if (entry.kind === "file" && app.activePath === currentPath) {
-    await editorManager.renameCurrentFile(finalName);
+    await editorManager.renameCurrentFile(stripMarkdownExtension(finalName));
     app.activePath = editorManager.getCurrentPath();
     updateExpandedPrefixesAfterRename(currentPath, app.activePath);
+    await updateSharePathsOnRename(currentPath, app.activePath);
+    await updateOrderOnRename(parentPath || "", entry.name, finalName);
     await refreshTree();
     return;
   }
@@ -182,6 +197,8 @@ const renameEntry = async (entryInfo, nextName) => {
     if (app.activePath === currentPath) {
       app.activePath = `${parentPath ? `${parentPath}/` : ""}${finalName}`;
     }
+    await updateSharePathsOnRename(currentPath, app.activePath || `${parentPath ? `${parentPath}/` : ""}${finalName}`);
+    await updateOrderOnRename(parentPath || "", entry.name, finalName);
     await refreshTree();
     return;
   }
@@ -193,6 +210,9 @@ const renameEntry = async (entryInfo, nextName) => {
   if (app.activePath === currentPath || app.activePath.startsWith(`${currentPath}/`)) {
     app.activePath = app.activePath.replace(currentPath, parentPath ? `${parentPath}/${finalName}` : finalName);
   }
+  await updateSharePathsOnRename(currentPath, parentPath ? `${parentPath}/${finalName}` : finalName);
+  await updateOrderPathsOnRename(currentPath, parentPath ? `${parentPath}/${finalName}` : finalName);
+  await updateOrderOnRename(parentPath || "", entry.name, finalName);
   await refreshTree();
 };
 
@@ -222,6 +242,7 @@ const deleteEntry = async (entryInfo) => {
     return;
   }
   await parentHandle.removeEntry(entry.name, recursive ? { recursive: true } : undefined);
+  await removeFromOrder(entryInfo.parentPath || "", entry.name);
   if (app.activePath === currentPath || app.activePath.startsWith(`${currentPath}/`)) {
     app.activePath = "";
     editorManager.clearCurrentFile?.();
@@ -236,6 +257,101 @@ const tree = createVaultTree({
   getActivePath: () => app.activePath,
   getExpandedPaths: () => app.expandedPaths,
   toggleExpandedPath,
+  getOrderForPath: (path) => getOrderForPath(path),
+  onDrop: async (sourceInfo, targetInfo) => {
+    if (!sourceInfo || !targetInfo) return;
+    if (sourceInfo.currentPath === targetInfo.currentPath) return;
+
+    const sourceParentPath = sourceInfo.parentPath || "";
+    const targetParentPath = targetInfo.parentPath || "";
+    const sourceName = sourceInfo.entry.name;
+    const targetName = targetInfo.entry.name;
+
+    if (targetInfo.entry.kind === "directory" && sourceInfo.entry.kind === "file") {
+      if (targetInfo.currentPath === sourceParentPath) {
+        return;
+      }
+      const targetHandle = targetInfo.entry;
+      const nextHandle = await copyFileToDirectory(
+        sourceInfo.entry,
+        targetHandle,
+        sourceInfo.entry.name
+      );
+      await sourceInfo.parentHandle.removeEntry(sourceInfo.entry.name);
+
+      const nextPath = targetInfo.currentPath
+        ? `${targetInfo.currentPath}/${sourceInfo.entry.name}`
+        : sourceInfo.entry.name;
+      const shareInfo = getShareForPath(sourceInfo.currentPath);
+      if (shareInfo) {
+        await setShareForPath(sourceInfo.currentPath, null);
+        await setShareForPath(nextPath, shareInfo);
+      }
+
+      await removeFromOrder(sourceParentPath, sourceName);
+      await addToOrderEnd(targetInfo.currentPath || "", sourceName);
+
+      if (app.activePath === sourceInfo.currentPath) {
+        app.activePath = nextPath;
+        await editorManager.openFile({
+          handle: nextHandle,
+          parentHandle: targetHandle,
+          path: nextPath
+        });
+      }
+      await refreshTree();
+      return;
+    }
+
+    if (targetInfo.entry.kind === "directory" && targetInfo.currentPath === "" && sourceInfo.entry.kind === "file") {
+      if (!app.rootHandle || sourceParentPath === "") {
+        return;
+      }
+      const targetHandle = app.rootHandle;
+      const nextHandle = await copyFileToDirectory(
+        sourceInfo.entry,
+        targetHandle,
+        sourceInfo.entry.name
+      );
+      await sourceInfo.parentHandle.removeEntry(sourceInfo.entry.name);
+
+      const nextPath = sourceInfo.entry.name;
+      const shareInfo = getShareForPath(sourceInfo.currentPath);
+      if (shareInfo) {
+        await setShareForPath(sourceInfo.currentPath, null);
+        await setShareForPath(nextPath, shareInfo);
+      }
+
+      await removeFromOrder(sourceParentPath, sourceName);
+      await addToOrderEnd("", sourceName);
+
+      if (app.activePath === sourceInfo.currentPath) {
+        app.activePath = nextPath;
+        await editorManager.openFile({
+          handle: nextHandle,
+          parentHandle: targetHandle,
+          path: nextPath
+        });
+      }
+      await refreshTree();
+      return;
+    }
+
+    if (sourceParentPath !== targetParentPath) {
+      return;
+    }
+
+    const order = await ensureOrderForPath(sourceInfo.parentHandle, sourceParentPath);
+    const nextOrder = order.filter((name) => name !== sourceName);
+    const insertIndex = nextOrder.indexOf(targetName);
+    if (insertIndex === -1) {
+      nextOrder.push(sourceName);
+    } else {
+      nextOrder.splice(insertIndex, 0, sourceName);
+    }
+    await setOrderForPath(sourceParentPath, nextOrder);
+    await refreshTree();
+  },
   onOpenFile: async ({ handle, parentHandle, path }) => {
     app.activePath = path;
     setView("editor");
@@ -313,6 +429,11 @@ const loadShareMap = async () => {
   shareState.map = stored[STORAGE_KEYS.VAULT_SHARES] || {};
 };
 
+const loadOrderMap = async () => {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.VAULT_ORDER);
+  orderState.map = stored[STORAGE_KEYS.VAULT_ORDER] || {};
+};
+
 const persistShareMap = async () => {
   await chrome.storage.local.set({
     [STORAGE_KEYS.VAULT_SHARES]: shareState.map
@@ -323,6 +444,21 @@ const persistShareMap = async () => {
     await storage.writeJsonFile(vaultHandle, ".rawnotes-share.json", shareState.map);
   } catch (error) {
     await logger.log("WARN", "share", "Failed to write share metadata", {
+      message: error.message || "Write failed"
+    });
+  }
+};
+
+const persistOrderMap = async () => {
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.VAULT_ORDER]: orderState.map
+  });
+  const vaultHandle = await storage.restoreVaultDirectory();
+  if (!vaultHandle) return;
+  try {
+    await storage.writeJsonFile(vaultHandle, ".rawnotes-order.json", orderState.map);
+  } catch (error) {
+    await logger.log("WARN", "tree", "Failed to write order metadata", {
       message: error.message || "Write failed"
     });
   }
@@ -343,10 +479,94 @@ const setShareForPath = async (path, data) => {
   await persistShareMap();
 };
 
+const updateSharePathsOnRename = async (oldPath, nextPath) => {
+  const nextMap = {};
+  Object.entries(shareState.map).forEach(([path, info]) => {
+    if (path === oldPath) {
+      nextMap[nextPath] = info;
+      return;
+    }
+    if (path.startsWith(`${oldPath}/`)) {
+      nextMap[`${nextPath}${path.slice(oldPath.length)}`] = info;
+      return;
+    }
+    nextMap[path] = info;
+  });
+  shareState.map = nextMap;
+  await persistShareMap();
+};
+
+const getOrderForPath = (path) => orderState.map[path] || null;
+
+const setOrderForPath = async (path, nextOrder) => {
+  orderState.map[path] = nextOrder;
+  await persistOrderMap();
+};
+
+const updateOrderPathsOnRename = async (oldPath, nextPath) => {
+  const nextMap = {};
+  Object.entries(orderState.map).forEach(([path, order]) => {
+    if (path === oldPath) {
+      nextMap[nextPath] = order;
+      return;
+    }
+    if (path.startsWith(`${oldPath}/`)) {
+      nextMap[`${nextPath}${path.slice(oldPath.length)}`] = order;
+      return;
+    }
+    nextMap[path] = order;
+  });
+  orderState.map = nextMap;
+  await persistOrderMap();
+};
+
+const isHiddenEntryName = (name) => name.startsWith(".");
+
+const ensureOrderForPath = async (parentHandle, parentPath) => {
+  if (orderState.map[parentPath]) {
+    return orderState.map[parentPath];
+  }
+  const names = [];
+  for await (const child of parentHandle.values()) {
+    if (isHiddenEntryName(child.name)) {
+      continue;
+    }
+    names.push(child.name);
+  }
+  names.sort((a, b) => a.localeCompare(b));
+  orderState.map[parentPath] = names;
+  await persistOrderMap();
+  return names;
+};
+
 const hasSharedDescendant = (path) =>
   Object.keys(shareState.map).some(
     (entryPath) => entryPath === path || entryPath.startsWith(`${path}/`)
   );
+
+const updateOrderOnRename = async (parentPath, previousName, nextName) => {
+  const order = orderState.map[parentPath];
+  if (!order) return;
+  const index = order.indexOf(previousName);
+  if (index === -1) return;
+  order[index] = nextName;
+  await setOrderForPath(parentPath, [...order]);
+};
+
+const removeFromOrder = async (parentPath, entryName) => {
+  const order = orderState.map[parentPath];
+  if (!order) return;
+  const nextOrder = order.filter((name) => name !== entryName);
+  await setOrderForPath(parentPath, nextOrder);
+};
+
+const addToOrderEnd = async (parentPath, entryName) => {
+  const order = orderState.map[parentPath] || [];
+  if (!order.includes(entryName)) {
+    order.push(entryName);
+    await setOrderForPath(parentPath, [...order]);
+  }
+};
 
 const setShareStatus = (message) => {
   const status = shareMenu.querySelector(".share-status");
@@ -439,6 +659,7 @@ const setEditorMode = async (nextMode) => {
 
 updateEditorModeUI();
 loadShareMap();
+loadOrderMap();
 
 const slashState = {
   open: false,
@@ -636,6 +857,8 @@ const pickVault = async () => {
   app.expandedPaths = new Set();
   app.fileCount = 0;
   setVaultName();
+  await loadShareMap();
+  await loadOrderMap();
   setView("tree");
   await refreshTree();
   await logger.log("INFO", "vault", "Picked vault folder", { name: app.vaultName });
@@ -671,6 +894,8 @@ const loadVault = async () => {
   app.activePath = "";
   app.expandedPaths = new Set();
   setVaultName();
+  await loadShareMap();
+  await loadOrderMap();
   setView("tree");
   await refreshTree();
 };
@@ -680,6 +905,7 @@ const createRootFile = async () => {
   setView("editor");
   await editorManager.createNewFile({ parentHandle: app.rootHandle });
   app.activePath = editorManager.getCurrentPath();
+  await addToOrderEnd("", getEntryName(app.activePath));
   renderSaveStatus();
   await tree.renderTree();
 };
@@ -692,6 +918,7 @@ const createRootFolder = async () => {
   if (!name) return;
   await app.rootHandle.getDirectoryHandle(name, { create: true });
   app.expandedPaths.add(name);
+  await addToOrderEnd("", name);
   await refreshTree();
 };
 

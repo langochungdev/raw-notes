@@ -4,6 +4,7 @@ const createIcon = (name) => {
     file: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l4 4v16H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V7h3.5L13 3.5Z" fill="currentColor"/></svg>`,
     chevron: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     dots: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>`,
+    drag: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="1.5" fill="currentColor"/><circle cx="15" cy="7" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="15" cy="12" r="1.5" fill="currentColor"/><circle cx="9" cy="17" r="1.5" fill="currentColor"/><circle cx="15" cy="17" r="1.5" fill="currentColor"/></svg>`,
     add: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
     folderPlus: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 14v6M11 17h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
   };
@@ -23,9 +24,11 @@ export const createVaultTree = ({
   getActivePath,
   getExpandedPaths,
   toggleExpandedPath,
+  getOrderForPath,
   onOpenFile,
   onRenameEntry,
   onDeleteEntry,
+  onDrop,
   onStatsChange
 }) => {
   const hiddenNames = new Set([".rawnotes-share", ".rawnotes-share.json"]);
@@ -35,6 +38,13 @@ export const createVaultTree = ({
   document.body.appendChild(menu);
 
   let menuState = null;
+  let dragState = null;
+  let dragOverRow = null;
+  let dragSourceRow = null;
+  let dragGhost = null;
+  let dragActive = false;
+  let lastDragTime = 0;
+  const rowEntryMap = new WeakMap();
 
   const hideMenu = () => {
     menu.classList.add("hidden");
@@ -122,6 +132,92 @@ export const createVaultTree = ({
     }
   });
 
+  const clearDragOver = () => {
+    if (!dragOverRow) return;
+    dragOverRow.classList.remove("drag-over");
+    dragOverRow = null;
+  };
+
+  const clearDragSource = () => {
+    if (!dragSourceRow) return;
+    dragSourceRow.classList.remove("drag-source");
+    dragSourceRow = null;
+  };
+
+  const clearDragGhost = () => {
+    if (!dragGhost) return;
+    dragGhost.remove();
+    dragGhost = null;
+  };
+
+  const setDragActive = (nextActive) => {
+    dragActive = nextActive;
+    document.body.classList.toggle("tree-dragging", dragActive);
+  };
+
+  const renderDragGhost = (entryInfo, x, y) => {
+    if (!dragGhost) {
+      dragGhost = document.createElement("div");
+      dragGhost.className = "tree-drag-ghost";
+      dragGhost.innerHTML = `
+        <span class="tree-drag-ghost-icon">${createIcon(entryInfo.entry.kind === "directory" ? "folder" : "file")}</span>
+        <span class="tree-drag-ghost-text">${escapeHtml(entryInfo.entry.name)}</span>
+      `;
+      document.body.appendChild(dragGhost);
+    }
+    dragGhost.style.transform = `translate(${x + 12}px, ${y + 12}px)`;
+  };
+
+  const handlePointerMove = (event) => {
+    if (!dragState) return;
+    const deltaX = Math.abs(event.clientX - dragState.startX);
+    const deltaY = Math.abs(event.clientY - dragState.startY);
+    if (!dragActive && (deltaX > 4 || deltaY > 4)) {
+      setDragActive(true);
+    }
+    if (dragActive) {
+      renderDragGhost(dragState.entryInfo, event.clientX, event.clientY);
+    }
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const row = target?.closest?.(".tree-row");
+    if (row && dragSourceRow && row === dragSourceRow) return;
+    if (!row || row === dragOverRow) return;
+    clearDragOver();
+    dragOverRow = row;
+    dragOverRow.classList.add("drag-over");
+  };
+
+  const handlePointerUp = async (event) => {
+    if (!dragState) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const dropRow = target?.closest?.(".tree-row") || dragOverRow;
+    let targetInfo = dropRow ? rowEntryMap.get(dropRow) : null;
+    if (!targetInfo && treeRootEl.contains(target)) {
+      const rootHandle = getRootHandle();
+      if (rootHandle) {
+        targetInfo = {
+          entry: rootHandle,
+          parentHandle: rootHandle,
+          parentPath: "",
+          currentPath: ""
+        };
+      }
+    }
+    clearDragOver();
+    clearDragSource();
+    clearDragGhost();
+    const sourceInfo = dragState.entryInfo;
+    const shouldDrop = dragActive;
+    dragState = null;
+    setDragActive(false);
+    if (shouldDrop && sourceInfo && targetInfo) {
+      await onDrop?.(sourceInfo, targetInfo);
+      lastDragTime = Date.now();
+    }
+    document.removeEventListener("pointermove", handlePointerMove);
+    document.removeEventListener("pointerup", handlePointerUp);
+  };
+
   const countFiles = async (dirHandle) => {
     let total = 0;
     for await (const child of dirHandle.values()) {
@@ -135,6 +231,17 @@ export const createVaultTree = ({
       }
     }
     return total;
+  };
+
+  const sortEntries = (entries, parentPath) => {
+    const order = getOrderForPath?.(parentPath) || [];
+    const orderIndex = new Map(order.map((name, index) => [name, index]));
+    return [...entries].sort((a, b) => {
+      const aIndex = orderIndex.has(a.name) ? orderIndex.get(a.name) : Number.MAX_SAFE_INTEGER;
+      const bIndex = orderIndex.has(b.name) ? orderIndex.get(b.name) : Number.MAX_SAFE_INTEGER;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      return a.name.localeCompare(b.name);
+    });
   };
 
   const renderEntry = async (entry, parentHandle, parentPath, depth) => {
@@ -154,6 +261,7 @@ export const createVaultTree = ({
     row.style.setProperty("--tree-depth", String(depth));
     row.dataset.path = currentPath;
     row.dataset.kind = entry.kind;
+    row.draggable = false;
 
     const left = document.createElement("div");
     left.className = "tree-row-left";
@@ -183,11 +291,13 @@ export const createVaultTree = ({
     label.innerHTML = escapeHtml(entry.name);
     if (isFolder) {
       label.addEventListener("click", async () => {
+        if (Date.now() - lastDragTime < 300) return;
         toggleExpandedPath(currentPath);
         await renderTree();
       });
     } else {
       label.addEventListener("click", async () => {
+        if (Date.now() - lastDragTime < 300) return;
         await onOpenFile?.({
           handle: entry,
           parentHandle,
@@ -200,6 +310,32 @@ export const createVaultTree = ({
     left.appendChild(icon);
     left.appendChild(label);
 
+    const dragHandle = document.createElement("button");
+    dragHandle.type = "button";
+    dragHandle.className = "tree-drag";
+    dragHandle.innerHTML = createIcon("drag");
+    dragHandle.setAttribute("aria-label", "Drag to reorder");
+    dragHandle.draggable = false;
+
+    const entryInfo = { entry, parentHandle, parentPath, currentPath };
+    rowEntryMap.set(row, entryInfo);
+    dragHandle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dragState = {
+        entryInfo,
+        startX: event.clientX,
+        startY: event.clientY
+      };
+      setDragActive(false);
+      dragSourceRow = row;
+      dragSourceRow.classList.add("drag-source");
+      clearDragOver();
+      dragHandle.setPointerCapture?.(event.pointerId);
+      document.addEventListener("pointermove", handlePointerMove);
+      document.addEventListener("pointerup", handlePointerUp);
+    });
+
     const more = document.createElement("button");
     more.type = "button";
     more.className = "tree-more ti ti-dots-vertical";
@@ -209,14 +345,24 @@ export const createVaultTree = ({
       openMenu(more, { entry, parentHandle, parentPath, currentPath }, label);
     });
 
+    row.addEventListener("dragstart", (event) => {
+      event.preventDefault();
+    });
+
     row.appendChild(left);
+    row.appendChild(dragHandle);
     row.appendChild(more);
     node.appendChild(row);
 
     if (isFolder && isExpanded) {
       const children = document.createElement("div");
       children.className = "tree-children";
+      const entries = [];
       for await (const child of entry.values()) {
+        entries.push(child);
+      }
+      const sorted = sortEntries(entries.filter((child) => !isHiddenEntry(child)), currentPath);
+      for (const child of sorted) {
         const childNode = await renderEntry(child, entry, currentPath, depth + 1);
         if (childNode) {
           children.appendChild(childNode);
@@ -238,10 +384,12 @@ export const createVaultTree = ({
     }
 
     let totalFiles = 0;
+    const entries = [];
     for await (const entry of rootHandle.values()) {
-      if (isHiddenEntry(entry)) {
-        continue;
-      }
+      entries.push(entry);
+    }
+    const sorted = sortEntries(entries.filter((entry) => !isHiddenEntry(entry)), "");
+    for (const entry of sorted) {
       const entryNode = await renderEntry(entry, rootHandle, "", 0);
       if (entryNode) {
         treeRootEl.appendChild(entryNode);

@@ -185,6 +185,20 @@ button {
     color: #e5e7eb;
 }
 
+.tree-row.drag-over {
+    background: #1b1b1b;
+    outline: 1px dashed #3a3a3a;
+}
+
+.tree-row.drag-source {
+    background: #131313;
+    outline: 1px solid #2a2a2a;
+}
+
+.tree-dragging .tree-row {
+    cursor: grabbing;
+}
+
 .tree-row:hover {
     background: #151515;
 }
@@ -221,6 +235,12 @@ button {
 .tree-more svg {
     width: 18px;
     height: 18px;
+    display: block;
+}
+
+.tree-drag svg {
+    width: 16px;
+    height: 16px;
     display: block;
 }
 
@@ -264,6 +284,61 @@ button {
     pointer-events: none;
 }
 
+.tree-drag {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: #8b8b8b;
+    opacity: 0.7;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-drag: element;
+}
+
+.tree-drag:active {
+    cursor: grabbing;
+}
+
+.tree-drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(20, 20, 20, 0.92);
+    border: 1px solid #2a2a2a;
+    color: #e5e7eb;
+    font-size: 13px;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-9999px, -9999px);
+}
+
+.tree-drag-ghost-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: #a3a3a3;
+}
+
+.tree-drag-ghost-icon svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.tree-drag-ghost-text {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .tree-rename-input {
     width: 100%;
     height: 30px;
@@ -279,6 +354,11 @@ button {
 .tree-row:focus-within .tree-more {
     opacity: 1;
     pointer-events: auto;
+}
+
+.tree-row:hover .tree-drag,
+.tree-row:focus-within .tree-drag {
+    opacity: 1;
 }
 
 .tree-children {
@@ -484,6 +564,21 @@ button {
     border-radius: 8px;
     background: #111;
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+
+    .tree-drag {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: var(--muted-2);
+        cursor: grab;
+    }
+
+    .tree-drag:active {
+        cursor: grabbing;
+    }
 }
 
 .slash-menu button,

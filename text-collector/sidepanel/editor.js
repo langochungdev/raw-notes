@@ -75,12 +75,14 @@ export const createEditorManager = ({
       .trim();
   };
 
+  const stripMarkdownExtension = (name) => name.replace(/\.md$/i, "");
+
   const updateState = (handle, parentHandle, path) => {
     currentFileHandle = handle;
     currentParentHandle = parentHandle;
     currentPath = path || handle.name;
     currentFileName = handle.name;
-    fileNameInput.value = handle.name;
+    fileNameInput.value = stripMarkdownExtension(handle.name);
   };
 
   const openFile = async ({ handle, parentHandle, path, focusTitle = false }) => {
@@ -130,11 +132,12 @@ export const createEditorManager = ({
   const renameCurrentFile = async (nextName) => {
     if (!currentFileHandle || !currentParentHandle) return;
     const sanitized = sanitizeFileName(nextName || "");
-    if (!sanitized) {
-      fileNameInput.value = currentFileName;
+    const baseName = stripMarkdownExtension(sanitized);
+    if (!baseName) {
+      fileNameInput.value = stripMarkdownExtension(currentFileName);
       return;
     }
-    const finalName = sanitized.endsWith(".md") ? sanitized : `${sanitized}.md`;
+    const finalName = `${baseName}.md`;
     if (finalName === currentFileName) return;
     const nextHandle = await currentParentHandle.getFileHandle(finalName, {
       create: true
