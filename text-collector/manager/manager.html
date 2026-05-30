@@ -36,16 +36,6 @@
                     </span>
                     Manual entry
                 </button>
-                <button id="filter-toggle" type="button" class="action-button">
-                    <span class="button-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M4 6h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            <path d="M7 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            <path d="M10 18h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                        </svg>
-                    </span>
-                    Filter
-                </button>
             </div>
         </header>
         <div id="onboard-banner" class="onboard-banner hidden">
@@ -77,30 +67,29 @@
                     </button>
                 </div>
                 <div id="collector-list" class="collector-list"></div>
-                <div class="sidebar-group-title sidebar-group-spacer">TOOLS</div>
-                <div class="collector-actions collector-tools">
-                    <button id="import-collector" type="button" class="tool-button">
-                        <span class="button-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M12 4v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                        Import
-                    </button>
-                    <button id="export-collector" type="button" class="tool-button">
-                        <span class="button-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M12 20V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <path d="M8 14l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M5 4h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                        Export
-                    </button>
-                </div>
                 <div class="collector-footer">
+                    <div class="collector-footer-row">
+                        <button id="import-collector" type="button" class="outline-button">
+                            <span class="button-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 4v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 10l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                </svg>
+                            </span>
+                            Import
+                        </button>
+                        <button id="export-collector" type="button" class="outline-button">
+                            <span class="button-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 20V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 14l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M5 4h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                </svg>
+                            </span>
+                            Export
+                        </button>
+                    </div>
                     <button id="view-logs" type="button" class="outline-button">
                         <span class="button-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24">

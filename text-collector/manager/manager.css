@@ -346,13 +346,6 @@ button {
     flex-direction: column;
 }
 
-.collector-list {
-    overflow: auto;
-    min-height: 0;
-    padding-right: 2px;
-    gap: 8px;
-}
-
 .collector-actions {
     display: flex;
     gap: 8px;
@@ -360,12 +353,26 @@ button {
     flex-direction: column;
 }
 
-.items-toolbar {
+.collector-footer {
+    margin-top: auto;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+}
+
+.collector-footer-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.collector-footer button {
+    width: 100%;
+}
+
+gap: 12px;
+margin-bottom: 12px;
 }
 
 .bulk-left {

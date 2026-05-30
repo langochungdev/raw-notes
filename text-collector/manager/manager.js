@@ -29,7 +29,6 @@ const collectorSelectToggle = document.getElementById("collector-select-toggle")
 const collectorDeleteSelected = document.getElementById("collector-delete-selected");
 const pickFolderButton = document.getElementById("pick-folder");
 const manualEntryToggle = document.getElementById("manual-entry-toggle");
-const filterToggle = document.getElementById("filter-toggle");
 const searchInput = document.getElementById("search");
 const searchCollectorsToggle = document.getElementById("search-collectors-toggle");
 const searchCollectorsPanel = document.getElementById("search-collectors-panel");
@@ -293,9 +292,6 @@ searchInput.addEventListener("input", () => {
   itemManager.refreshItems();
 });
 
-filterToggle.addEventListener("click", () => {
-  searchInput.focus();
-});
 
 searchCollectorsToggle.addEventListener("click", (event) => {
   event.preventDefault();
