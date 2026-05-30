@@ -51,6 +51,73 @@ async function removeHandle(key) {
   });
 }
 
+const SHARE_ENDPOINTS = {
+  create: "https://rentry.co/api/new",
+  update: "https://rentry.co/api/edit",
+  delete: "https://rentry.co/api/delete"
+};
+
+let rentrySession = {
+  csrfToken: null,
+  expiresAt: 0
+};
+
+const sanitizeMarkdown = (value) => {
+  if (!value) return "";
+  return value
+    .replace(/\u0000/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .trim();
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 15000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+};
+
+const parseShareResponse = async (response) => {
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = null;
+  }
+  if (!response.ok) {
+    const message = data?.errors || data?.content || "Share request failed";
+    throw new Error(message);
+  }
+  if (!data) {
+    throw new Error("Invalid share response");
+  }
+  return data;
+};
+
+const parseHtmlCsrfToken = (html) => {
+  if (!html) return null;
+  const match = html.match(/name="csrfmiddlewaretoken" value="([^"]+)"/);
+  return match ? match[1] : null;
+};
+
+const getShareSlug = (shareUrl) => {
+  if (!shareUrl) return "";
+  try {
+    const parsed = new URL(shareUrl);
+    return parsed.pathname.replace(/^\//, "");
+  } catch (error) {
+    return "";
+  }
+};
+
 export class StorageService {
   constructor(logger) {
     this.logger = logger;
@@ -137,6 +204,8 @@ export class StorageService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: [],
+      shareUrl: null,
+      shareEditCode: null,
       ...item
     };
     items.push(nextItem);
@@ -179,6 +248,215 @@ export class StorageService {
     return updatedItem;
   }
 
+  async requestShareCreate(markdown) {
+    const payload = new URLSearchParams();
+    payload.set("text", markdown);
+    const response = await fetchWithTimeout(SHARE_ENDPOINTS.create, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: payload
+    });
+    const data = await parseShareResponse(response);
+    const shareUrl = data?.url || data?.content?.url;
+    const editCode = data?.edit_code || data?.editCode || data?.content?.edit_code;
+    if (!shareUrl || !editCode) {
+      throw new Error("Invalid share response");
+    }
+    return { shareUrl, shareEditCode: editCode };
+  }
+
+  async getRentryCsrfToken() {
+    const now = Date.now();
+    if (rentrySession.csrfToken && rentrySession.expiresAt > now) {
+      return rentrySession.csrfToken;
+    }
+    const response = await fetchWithTimeout("https://rentry.co/", {
+      method: "GET",
+      credentials: "include",
+      referrer: "https://rentry.co/",
+      referrerPolicy: "origin"
+    });
+    const html = await response.text();
+    const token = parseHtmlCsrfToken(html);
+    if (!token) {
+      throw new Error("CSRF token not found");
+    }
+    rentrySession = {
+      csrfToken: token,
+      expiresAt: now + 10 * 60 * 1000
+    };
+    return token;
+  }
+
+  async requestShareUpdate(editCode, markdown, shareUrl = "") {
+    const csrfToken = await this.getRentryCsrfToken();
+    const slug = getShareSlug(shareUrl);
+    const payload = new URLSearchParams();
+    payload.set("edit_code", editCode);
+    if (slug) {
+      payload.set("url", slug);
+    }
+    payload.set("text", markdown);
+    const response = await fetchWithTimeout(SHARE_ENDPOINTS.update, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": csrfToken
+      },
+      body: payload,
+      credentials: "include",
+      referrer: "https://rentry.co/",
+      referrerPolicy: "origin"
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Share update failed");
+    }
+    return true;
+  }
+
+  async requestShareDelete(editCode, shareUrl = "") {
+    const csrfToken = await this.getRentryCsrfToken();
+    const slug = getShareSlug(shareUrl);
+    const payload = new URLSearchParams();
+    payload.set("edit_code", editCode);
+    if (slug) {
+      payload.set("url", slug);
+    }
+    const response = await fetchWithTimeout(SHARE_ENDPOINTS.delete, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": csrfToken
+      },
+      body: payload,
+      credentials: "include",
+      referrer: "https://rentry.co/",
+      referrerPolicy: "origin"
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Share delete failed");
+    }
+    return true;
+  }
+
+  async shareMarkdownOnline(markdown) {
+    const sanitized = sanitizeMarkdown(markdown);
+    if (!sanitized) {
+      throw new Error("Empty content");
+    }
+    return this.requestShareCreate(sanitized);
+  }
+
+  async updateSharedMarkdownOnline(markdown, editCode, shareUrl = "") {
+    const sanitized = sanitizeMarkdown(markdown);
+    if (!sanitized) {
+      throw new Error("Empty content");
+    }
+    if (!editCode) {
+      throw new Error("Missing edit code");
+    }
+    await this.requestShareUpdate(editCode, sanitized, shareUrl);
+    return true;
+  }
+
+  async deleteSharedMarkdownOnline(editCode, shareUrl = "") {
+    if (!editCode) {
+      throw new Error("Missing edit code");
+    }
+    await this.requestShareDelete(editCode, shareUrl);
+    return true;
+  }
+
+  async shareItemOnline(id) {
+    const items = await this.getItems();
+    const item = items.find((entry) => entry.id === id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    if (item.shareEditCode) {
+      return this.updateSharedItemOnline(id);
+    }
+    const content = sanitizeMarkdown(item.note || item.text || "");
+    if (!content) {
+      throw new Error("Empty content");
+    }
+    try {
+      const result = await this.requestShareCreate(content);
+      return await this.updateItem(id, {
+        shareUrl: result.shareUrl,
+        shareEditCode: result.shareEditCode
+      });
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("ERROR", "share", "Publish failed", {
+          id,
+          message: error.message || "Publish failed"
+        });
+      }
+      throw error;
+    }
+  }
+
+  async updateSharedItemOnline(id) {
+    const items = await this.getItems();
+    const item = items.find((entry) => entry.id === id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    if (!item.shareEditCode) {
+      throw new Error("Missing edit code");
+    }
+    const content = sanitizeMarkdown(item.note || item.text || "");
+    if (!content) {
+      throw new Error("Empty content");
+    }
+    try {
+      await this.requestShareUpdate(item.shareEditCode, content, item.shareUrl || "");
+      return await this.updateItem(id, {
+        shareUrl: item.shareUrl || null,
+        shareEditCode: item.shareEditCode
+      });
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("ERROR", "share", "Sync failed", {
+          id,
+          message: error.message || "Sync failed"
+        });
+      }
+      throw error;
+    }
+  }
+
+  async deleteSharedItemOnline(id) {
+    const items = await this.getItems();
+    const item = items.find((entry) => entry.id === id);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+    if (!item.shareEditCode) {
+      throw new Error("Missing edit code");
+    }
+    try {
+      await this.requestShareDelete(item.shareEditCode, item.shareUrl || "");
+      return await this.updateItem(id, {
+        shareUrl: null,
+        shareEditCode: null
+      });
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("ERROR", "share", "Delete failed", {
+          id,
+          message: error.message || "Delete failed"
+        });
+      }
+      throw error;
+    }
+  }
+
   async exportCollector(collectorId) {
     const collectors = await this.getCollectors();
     const items = await this.getItems();
@@ -187,7 +465,7 @@ export class StorageService {
       throw new Error("Collector not found");
     }
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: new Date().toISOString(),
       collector,
       items: items.filter((item) => item.collectorId === collectorId)
@@ -362,7 +640,7 @@ export class StorageService {
     if (!handle) return;
     const collectors = await this.getCollectors();
     await this.writeJsonFile(handle, "schema.json", {
-      schemaVersion: 2
+      schemaVersion: 3
     });
     await this.writeJsonFile(handle, "collectors.json", collectors);
   }

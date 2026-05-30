@@ -517,6 +517,59 @@ button {
     color: #fca5a5;
 }
 
+.share-menu {
+    position: fixed;
+    z-index: 2147483647;
+    min-width: 220px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #111;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.share-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.share-url {
+    flex: 1;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0f0f0f;
+    color: var(--text);
+    padding: 0 10px;
+    font-size: 12px;
+}
+
+.share-action {
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #171717;
+    color: var(--text);
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.share-action.danger {
+    border-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+.share-status {
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 16px;
+}
+
 @media (hover: hover) {
     .tree-label:hover {
         color: #fff;

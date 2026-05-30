@@ -5,6 +5,7 @@ export const createItemManager = ({
   updateSelectionState,
   showNotice,
   openEditModal,
+  onCopyShare,
   reloadItems,
   itemsTitle,
   itemList,
@@ -60,7 +61,8 @@ export const createItemManager = ({
     const label = searchQuery ? `Results (${results.length})` : "Items";
     itemsTitle.textContent = label;
     renderItems(itemList, results, getSelectedIds(), searchQuery, matchesById, {
-      onEdit: (item) => handleItemEdit(item)
+      onEdit: (item) => handleItemEdit(item),
+      onCopyShare
     });
     updateSelectionState(
       selectAllInput,

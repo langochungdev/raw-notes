@@ -50,6 +50,13 @@
                         <input id="file-name" class="file-name-input" type="text" placeholder="Dòng đầu tiên là tên file..." />
                     </div>
                     <div class="editor-topbar-right">
+                        <button id="share-button" type="button" class="mode-button icon-only" aria-label="Share menu">
+                            <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 12a5 5 0 0 1 5-5h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M17 12a5 5 0 0 1-5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </button>
                         <button id="view-file" type="button" class="mode-button icon-only" aria-label="View file">
                             <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M6 2h8l4 4v16H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
@@ -60,6 +67,7 @@
                     </div>
                     <div id="save-status" class="save-status hidden" aria-hidden="true"></div>
                 </div>
+                <div id="share-menu" class="share-menu hidden" role="menu" aria-label="Share menu"></div>
                 <div class="editor-card">
                     <div class="editor-wrap">
                         <div id="editor-body" class="editor-body" aria-label="Note editor"></div>

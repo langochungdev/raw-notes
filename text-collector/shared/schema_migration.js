@@ -8,6 +8,14 @@ const MIGRATIONS = {
       tags: [],
       ...item
     }))
+  }),
+  3: (data) => ({
+    ...data,
+    items: (data.items || []).map((item) => ({
+      ...item,
+      shareUrl: item.shareUrl || null,
+      shareEditCode: item.shareEditCode || null
+    }))
   })
 };
 

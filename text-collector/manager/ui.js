@@ -159,6 +159,33 @@ export const renderItems = (
       });
       content.appendChild(tags);
     }
+    if (item.shareUrl) {
+      const shareRow = document.createElement("div");
+      shareRow.className = "item-share";
+      const shareIcon = document.createElement("span");
+      shareIcon.className = "item-share-icon";
+      shareIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 12a5 5 0 0 1 5-5h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M17 12a5 5 0 0 1-5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      `;
+      const shareText = document.createElement("div");
+      shareText.className = "item-share-text";
+      shareText.textContent = "Shared";
+      shareRow.appendChild(shareIcon);
+      shareRow.appendChild(shareText);
+      if (actions?.onCopyShare) {
+        const copyButton = document.createElement("button");
+        copyButton.type = "button";
+        copyButton.className = "item-share-copy";
+        copyButton.textContent = "Copy link";
+        copyButton.addEventListener("click", () => actions.onCopyShare(item));
+        shareRow.appendChild(copyButton);
+      }
+      content.appendChild(shareRow);
+    }
     if (actions?.onEdit) {
       const actionRow = document.createElement("div");
       actionRow.className = "item-actions";

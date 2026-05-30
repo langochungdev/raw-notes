@@ -63,6 +63,16 @@ let currentResults = [];
 const selectedIds = new Set();
 let reloadAllData = async () => {};
 
+const handleCopyShare = async (item) => {
+  if (!item?.shareUrl) return;
+  try {
+    await navigator.clipboard.writeText(item.shareUrl);
+    showNotice(document, "Link copied");
+  } catch (error) {
+    showNotice(document, "Copy failed");
+  }
+};
+
 const updateSearchPlaceholder = () => {
   const activeCollector = allCollectors.find((collector) => collector.id === activeCollectorId);
   searchInput.placeholder = activeCollector
@@ -90,6 +100,7 @@ const itemManager = createItemManager({
   updateSelectionState,
   showNotice,
   openEditModal: (item) => editModalManager.open(item),
+  onCopyShare: (item) => handleCopyShare(item),
   reloadItems: () => reloadAllData(),
   itemsTitle,
   itemList,

@@ -1,5 +1,6 @@
 import { StorageService } from "../shared/storage.js";
 import { Logger } from "../shared/logger.js";
+import { STORAGE_KEYS } from "../shared/constants.js";
 import { createVaultTree } from "./tree.js";
 import { createEditorManager } from "./editor.js";
 
@@ -24,6 +25,8 @@ const rawEditor = document.getElementById("raw-editor");
 const saveStatus = document.getElementById("save-status");
 const editorModeButton = document.getElementById("editor-mode");
 const viewFileButton = document.getElementById("view-file");
+const shareButton = document.getElementById("share-button");
+const shareMenu = document.getElementById("share-menu");
 const slashMenu = document.getElementById("slash-menu");
 const nodeMenu = document.getElementById("node-menu");
 
@@ -67,10 +70,12 @@ const setView = (nextView) => {
   editorState.classList.toggle("hidden", nextView !== "editor");
   if (nextView !== "editor") {
     closeSlashMenu();
+    closeShareMenu();
   }
   const editorEnabled = nextView === "editor";
   editorModeButton.disabled = !editorEnabled;
   viewFileButton.disabled = !editorEnabled;
+  shareButton.disabled = !editorEnabled;
   renderSaveStatus();
 };
 
@@ -220,6 +225,10 @@ const tree = createVaultTree({
       path
     });
     renderSaveStatus();
+    if (shareState.open) {
+      renderShareMenu();
+      positionShareMenu();
+    }
     await tree.renderTree();
   },
   onRenameEntry: renameEntry,
@@ -266,6 +275,112 @@ const updateEditorModeUI = () => {
   rawEditor.classList.toggle("hidden", isLive);
 };
 
+const shareState = {
+  map: {},
+  open: false,
+  loading: false
+};
+
+const escapeHtml = (value) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+
+const loadShareMap = async () => {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.VAULT_SHARES);
+  shareState.map = stored[STORAGE_KEYS.VAULT_SHARES] || {};
+};
+
+const persistShareMap = async () => {
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.VAULT_SHARES]: shareState.map
+  });
+  const vaultHandle = await storage.restoreVaultDirectory();
+  if (!vaultHandle) return;
+  try {
+    await storage.writeJsonFile(vaultHandle, ".rawnotes-share.json", shareState.map);
+  } catch (error) {
+    await logger.log("WARN", "share", "Failed to write share metadata", {
+      message: error.message || "Write failed"
+    });
+  }
+};
+
+const getShareForPath = (path) => {
+  if (!path) return null;
+  return shareState.map[path] || null;
+};
+
+const setShareForPath = async (path, data) => {
+  if (!path) return;
+  if (data) {
+    shareState.map[path] = data;
+  } else {
+    delete shareState.map[path];
+  }
+  await persistShareMap();
+};
+
+const setShareStatus = (message) => {
+  const status = shareMenu.querySelector(".share-status");
+  if (status) {
+    status.textContent = message || "";
+  }
+};
+
+const renderShareMenu = () => {
+  const shareInfo = getShareForPath(app.activePath);
+  if (!app.activePath) {
+    shareMenu.innerHTML = `
+      <div class="share-status">No file selected</div>
+    `;
+    return;
+  }
+  if (!shareInfo) {
+    shareMenu.innerHTML = `
+      <button type="button" class="share-action" data-action="publish">Publish online</button>
+      <div class="share-status"></div>
+    `;
+    return;
+  }
+  const safeUrl = escapeHtml(shareInfo.shareUrl || "");
+  shareMenu.innerHTML = `
+    <div class="share-row">
+      <input class="share-url" type="text" readonly value="${safeUrl}" />
+      <button type="button" class="share-action" data-action="copy">Copy</button>
+    </div>
+    <div class="share-row">
+      <button type="button" class="share-action" data-action="sync">Sync latest</button>
+      <button type="button" class="share-action danger" data-action="stop">Stop sharing</button>
+    </div>
+    <div class="share-status"></div>
+  `;
+};
+
+const positionShareMenu = () => {
+  const rect = shareButton.getBoundingClientRect();
+  const left = Math.min(rect.left, window.innerWidth - 260);
+  const top = rect.bottom + 6;
+  shareMenu.style.left = `${left}px`;
+  shareMenu.style.top = `${top}px`;
+};
+
+const closeShareMenu = () => {
+  shareState.open = false;
+  shareMenu.classList.add("hidden");
+  shareMenu.innerHTML = "";
+};
+
+const openShareMenu = () => {
+  if (app.view !== "editor") return;
+  shareState.open = true;
+  renderShareMenu();
+  positionShareMenu();
+  shareMenu.classList.remove("hidden");
+};
+
 const formatForLive = (text) => {
   const normalized = (text || "").replace(/\r\n/g, "\n");
   const lines = normalized.split("\n");
@@ -298,6 +413,7 @@ const setEditorMode = async (nextMode) => {
 };
 
 updateEditorModeUI();
+loadShareMap();
 
 const slashState = {
   open: false,
@@ -479,6 +595,9 @@ document.addEventListener("pointerdown", (event) => {
   if (!slashMenu.contains(event.target)) {
     closeSlashMenu();
   }
+  if (!shareMenu.contains(event.target) && event.target !== shareButton) {
+    closeShareMenu();
+  }
 });
 
 const pickVault = async () => {
@@ -573,6 +692,66 @@ viewFileButton.addEventListener("click", async () => {
   const url = URL.createObjectURL(file);
   window.open(url, "_blank", "noopener");
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+});
+
+shareButton.addEventListener("click", () => {
+  if (shareState.open) {
+    closeShareMenu();
+    return;
+  }
+  openShareMenu();
+});
+
+shareMenu.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button || shareState.loading) return;
+  const action = button.dataset.action;
+  const currentPath = app.activePath;
+  if (!currentPath) return;
+
+  const shareInfo = getShareForPath(currentPath);
+  const content = rawEditor.value || "";
+  shareState.loading = true;
+  setShareStatus("Working...");
+  try {
+    if (action === "publish") {
+      const result = await storage.shareMarkdownOnline(content);
+      await setShareForPath(currentPath, {
+        shareUrl: result.shareUrl,
+        shareEditCode: result.shareEditCode,
+        updatedAt: new Date().toISOString()
+      });
+      renderShareMenu();
+      setShareStatus("Published");
+    }
+    if (action === "sync" && shareInfo?.shareEditCode) {
+      await storage.updateSharedMarkdownOnline(content, shareInfo.shareEditCode, shareInfo.shareUrl || "");
+      await setShareForPath(currentPath, {
+        ...shareInfo,
+        updatedAt: new Date().toISOString()
+      });
+      renderShareMenu();
+      setShareStatus("Synced");
+    }
+    if (action === "stop" && shareInfo?.shareEditCode) {
+      await storage.deleteSharedMarkdownOnline(shareInfo.shareEditCode, shareInfo.shareUrl || "");
+      await setShareForPath(currentPath, null);
+      renderShareMenu();
+      setShareStatus("Stopped");
+    }
+    if (action === "copy" && shareInfo?.shareUrl) {
+      await navigator.clipboard.writeText(shareInfo.shareUrl);
+      setShareStatus("Copied");
+    }
+  } catch (error) {
+    await logger.log("ERROR", "share", "Share action failed", {
+      path: currentPath,
+      message: error.message || "Share failed"
+    });
+    setShareStatus("Failed");
+  } finally {
+    shareState.loading = false;
+  }
 });
 
 rawEditor.addEventListener("input", () => {
