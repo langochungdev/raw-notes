@@ -288,6 +288,13 @@ export const createEditorManager = ({
     }
   };
 
+  const setReadOnly = async (readOnly) => {
+    const controller = await getEditorController();
+    if (controller?.setReadOnly) {
+      controller.setReadOnly(Boolean(readOnly));
+    }
+  };
+
   return {
     openFile,
     scheduleSave,
@@ -305,6 +312,7 @@ export const createEditorManager = ({
     focusEditor,
     insertMarkdown,
     insertTemplate,
+    setReadOnly,
     writeCurrentFile
   };
 };

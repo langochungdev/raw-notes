@@ -57,7 +57,7 @@ const app = {
   expandedPaths: new Set(),
   view: "empty",
   fileCount: 0,
-  editorMode: "live"
+  editorMode: "raw"
 };
 
 const setView = (nextView) => {
@@ -273,11 +273,13 @@ const setEditorMode = async (nextMode) => {
     return;
   }
   if (targetMode === "raw") {
+    await editorManager.setReadOnly(false);
     const text = await editorManager.getCurrentText();
     rawEditor.value = text || "";
   } else {
     await editorManager.setCurrentText(rawEditor.value || "");
     editorManager.scheduleSave();
+    await editorManager.setReadOnly(true);
   }
   app.editorMode = targetMode;
   updateEditorModeUI();

@@ -109,6 +109,16 @@ export async function mountMilkdownEditor(root, options = {}) {
         view?.focus();
       });
     },
+    setReadOnly(readOnly) {
+      if (!state.editor) return;
+      state.editor.action((ctx) => {
+        const view = ctx.get("editorView");
+        if (!view) return;
+        view.setProps({
+          editable: () => !readOnly
+        });
+      });
+    },
     destroy() {
       state.editor?.destroy?.();
       state.editor = null;
