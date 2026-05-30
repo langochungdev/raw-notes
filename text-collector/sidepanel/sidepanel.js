@@ -201,6 +201,26 @@ const deleteEntry = async (entryInfo) => {
   const parentHandle = entryInfo.parentHandle;
   const currentPath = entryInfo.currentPath;
   const recursive = entry.kind === "directory";
+  if (entry.kind === "file") {
+    const shareInfo = getShareForPath(currentPath);
+    if (shareInfo?.shareEditCode) {
+      try {
+        await storage.deleteSharedMarkdownOnline(shareInfo.shareEditCode, shareInfo.shareUrl || "");
+        await setShareForPath(currentPath, null);
+      } catch (error) {
+        await logger.log("ERROR", "share", "Stop sharing failed", {
+          path: currentPath,
+          message: error.message || "Stop failed"
+        });
+        window.alert("Stop sharing failed. Please try again before deleting.");
+        return;
+      }
+    }
+  }
+  if (entry.kind === "directory" && hasSharedDescendant(currentPath)) {
+    window.alert("Folder contains published files. Stop sharing them before deleting.");
+    return;
+  }
   await parentHandle.removeEntry(entry.name, recursive ? { recursive: true } : undefined);
   if (app.activePath === currentPath || app.activePath.startsWith(`${currentPath}/`)) {
     app.activePath = "";
@@ -322,6 +342,11 @@ const setShareForPath = async (path, data) => {
   }
   await persistShareMap();
 };
+
+const hasSharedDescendant = (path) =>
+  Object.keys(shareState.map).some(
+    (entryPath) => entryPath === path || entryPath.startsWith(`${path}/`)
+  );
 
 const setShareStatus = (message) => {
   const status = shareMenu.querySelector(".share-status");
