@@ -266,6 +266,19 @@ const updateEditorModeUI = () => {
   rawEditor.classList.toggle("hidden", isLive);
 };
 
+const formatForLive = (text) => {
+  const normalized = (text || "").replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  const formatted = lines.map((line, index) => {
+    const next = lines[index + 1];
+    if (next === undefined) return line;
+    if (line === "" || next === "") return line;
+    if (line.endsWith("  ")) return line;
+    return `${line}  `;
+  }).join("\n");
+  return formatted;
+};
+
 const setEditorMode = async (nextMode) => {
   const targetMode = nextMode === "raw" ? "raw" : "live";
   if (app.editorMode === targetMode) {
@@ -274,11 +287,9 @@ const setEditorMode = async (nextMode) => {
   }
   if (targetMode === "raw") {
     await editorManager.setReadOnly(false);
-    const text = await editorManager.getCurrentText();
-    rawEditor.value = text || "";
   } else {
-    await editorManager.setCurrentText(rawEditor.value || "");
-    editorManager.scheduleSave();
+    const formatted = formatForLive(rawEditor.value || "");
+    await editorManager.setCurrentText(formatted);
     await editorManager.setReadOnly(true);
   }
   app.editorMode = targetMode;
@@ -657,7 +668,9 @@ editorBody.addEventListener("keydown", handleEditorKeydown);
 rawEditor.addEventListener("keydown", handleEditorKeydown);
 
 window.addEventListener("textcollector:markdown-change", () => {
-  editorManager.scheduleSave();
+  if (app.editorMode === "raw") {
+    editorManager.scheduleSave();
+  }
 });
 
 loadVault();
