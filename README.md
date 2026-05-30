@@ -11,16 +11,16 @@
 ```mermaid
 graph TD
     subgraph Browser
-        A[Web Page] -->|1. Highlight text| B(Content Script - Shadow DOM Tooltip)
-        B -->|2. Send (text, url, title)| C(Service Worker - Message Hub)
+        A[Web Page] -->|1. Highlight text| B[Content Script - Shadow DOM Tooltip]
+        B -->|2. Send — text · url · title| C[Service Worker - Message Hub]
         F[Sidepanel - Obsidian Editor] <-->|Read/Write| C
         G[Manager UI - Search & Manage] <-->|Query| C
     end
 
     subgraph Local Storage
-        C -->|Metadata & Index| D[(chrome.storage.local + MiniSearch)]
-        C -->|Save Items| E[(File System API - JSON/Folders)]
-        F -->|Auto-save .md| H[(Obsidian Vault)]
+        C -->|Metadata & Index| D[chrome.storage.local + MiniSearch]
+        C -->|Save Items| E[File System API - JSON/Folders]
+        F -->|Auto-save .md| H[Obsidian Vault]
     end
 ```
 
