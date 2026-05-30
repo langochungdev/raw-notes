@@ -296,17 +296,50 @@ const slashState = {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const getTextareaCaretRect = (textarea) => {
+  const value = textarea.value || "";
+  const caretIndex = textarea.selectionStart ?? value.length;
+  const style = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  mirror.style.position = "absolute";
+  mirror.style.visibility = "hidden";
+  mirror.style.whiteSpace = "pre-wrap";
+  mirror.style.wordWrap = "break-word";
+  mirror.style.font = style.font;
+  mirror.style.padding = style.padding;
+  mirror.style.border = style.border;
+  mirror.style.boxSizing = style.boxSizing;
+  mirror.style.lineHeight = style.lineHeight;
+  mirror.style.width = `${textarea.clientWidth}px`;
+
+  const before = document.createElement("span");
+  before.textContent = value.slice(0, caretIndex);
+  const caret = document.createElement("span");
+  caret.textContent = "\u200b";
+  mirror.appendChild(before);
+  mirror.appendChild(caret);
+  document.body.appendChild(mirror);
+
+  const caretRect = caret.getBoundingClientRect();
+  const mirrorRect = mirror.getBoundingClientRect();
+  const textareaRect = textarea.getBoundingClientRect();
+  const left = textareaRect.left + (caretRect.left - mirrorRect.left) - textarea.scrollLeft;
+  const top = textareaRect.top + (caretRect.top - mirrorRect.top) - textarea.scrollTop;
+
+  document.body.removeChild(mirror);
+  return {
+    left,
+    right: left,
+    top,
+    bottom: top + parseFloat(style.lineHeight || "16"),
+    width: 0,
+    height: 0
+  };
+};
+
 const getCaretRect = () => {
   if (document.activeElement === rawEditor) {
-    const rect = rawEditor.getBoundingClientRect();
-    return {
-      left: rect.left + 12,
-      right: rect.left + 12,
-      top: rect.top + 12,
-      bottom: rect.top + 32,
-      width: 0,
-      height: 0
-    };
+    return getTextareaCaretRect(rawEditor);
   }
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) return null;
@@ -315,7 +348,10 @@ const getCaretRect = () => {
     range.collapse(false);
   }
   const rects = range.getClientRects();
-  if (rects.length > 0) return rects[0];
+  if (rects.length > 0) {
+    const rect = rects[0];
+    if (rect && (rect.width || rect.height)) return rect;
+  }
   const rect = range.getBoundingClientRect();
   if (rect && (rect.width || rect.height)) return rect;
   return null;
