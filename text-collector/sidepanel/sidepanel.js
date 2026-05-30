@@ -293,7 +293,9 @@ const slashState = {
   query: "",
   index: 0,
   items: [],
-  anchorRect: null
+  anchorRect: null,
+  startIndex: null,
+  pendingOpen: false
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -395,11 +397,14 @@ const closeSlashMenu = () => {
   slashState.query = "";
   slashState.index = 0;
   slashState.items = [];
+  slashState.startIndex = null;
+  slashState.pendingOpen = false;
   slashMenu.classList.add("hidden");
   slashMenu.innerHTML = "";
 };
 
 const openSlashMenu = () => {
+  if (app.editorMode !== "raw") return;
   slashState.open = true;
   slashState.query = "";
   slashState.index = 0;
@@ -409,6 +414,23 @@ const openSlashMenu = () => {
 
 const insertFromSlashMenu = async (option) => {
   if (!option) return;
+  if (app.editorMode === "raw" && slashState.startIndex != null) {
+    const value = rawEditor.value || "";
+    const caret = rawEditor.selectionStart ?? value.length;
+    const start = Math.max(0, slashState.startIndex);
+    const markerIndex = option.template.indexOf(CURSOR_MARKER);
+    const insertText = markerIndex === -1
+      ? option.template
+      : option.template.replace(CURSOR_MARKER, "");
+    rawEditor.value = value.slice(0, start) + insertText + value.slice(caret);
+    const cursorPos = start + (markerIndex === -1 ? insertText.length : markerIndex);
+    rawEditor.selectionStart = cursorPos;
+    rawEditor.selectionEnd = cursorPos;
+    closeSlashMenu();
+    editorManager.scheduleSave();
+    editorManager.focusEditor();
+    return;
+  }
   closeSlashMenu();
   await editorManager.insertTemplate(option.template, CURSOR_MARKER);
   editorManager.scheduleSave();
@@ -443,7 +465,7 @@ document.addEventListener("pointerdown", (event) => {
   if (!nodeMenu.contains(event.target)) {
     nodeMenu.classList.add("hidden");
   }
-  if (!slashMenu.contains(event.target) && event.target !== editorBody && event.target !== rawEditor) {
+  if (!slashMenu.contains(event.target)) {
     closeSlashMenu();
   }
 });
@@ -546,6 +568,28 @@ rawEditor.addEventListener("input", () => {
   if (app.editorMode === "raw") {
     editorManager.scheduleSave();
   }
+  if (slashState.pendingOpen) {
+    slashState.pendingOpen = false;
+    slashState.startIndex = Math.max(0, (rawEditor.selectionStart ?? 0) - 1);
+    slashState.anchorRect = getCaretRect();
+    openSlashMenu();
+    return;
+  }
+  if (!slashState.open || app.editorMode !== "raw") return;
+  const caret = rawEditor.selectionStart ?? 0;
+  if (slashState.startIndex == null || caret < slashState.startIndex) {
+    closeSlashMenu();
+    return;
+  }
+  const segment = rawEditor.value.slice(slashState.startIndex, caret);
+  if (!segment.startsWith("/") || /\s/.test(segment)) {
+    closeSlashMenu();
+    return;
+  }
+  slashState.query = segment.slice(1);
+  slashState.index = 0;
+  slashState.anchorRect = getCaretRect();
+  renderSlashMenu();
 });
 
 fileNameInput.addEventListener("keydown", async (event) => {
@@ -592,32 +636,16 @@ const handleSlashKeydown = async (event) => {
     return true;
   }
 
-  if (event.key === "Backspace") {
-    event.preventDefault();
-    slashState.query = slashState.query.slice(0, -1);
-    slashState.index = 0;
-    renderSlashMenu();
-    return true;
-  }
-
-  if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
-    event.preventDefault();
-    slashState.query += event.key;
-    slashState.index = 0;
-    renderSlashMenu();
-    return true;
-  }
-
   return false;
 };
 
 const handleEditorKeydown = async (event) => {
   if (app.view !== "editor") return;
+  if (app.editorMode !== "raw") return;
   if (await handleSlashKeydown(event)) return;
 
   if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
-    event.preventDefault();
-    openSlashMenu();
+    slashState.pendingOpen = true;
     return;
   }
   if (event.key === "Escape") {
