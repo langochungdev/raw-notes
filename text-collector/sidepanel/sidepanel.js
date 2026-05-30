@@ -50,6 +50,10 @@ window.addEventListener("beforeunload", () => {
   notifySidepanelState(false);
 });
 
+setInterval(() => {
+  notifySidepanelState(true);
+}, 2000);
+
 notifySidepanelState(true);
 
 editorBody.dataset.placeholder = "Dòng đầu tiên là tên file...";

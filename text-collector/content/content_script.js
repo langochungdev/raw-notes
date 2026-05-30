@@ -8,6 +8,11 @@
   let edgeDragOffset = 0;
   let edgeHideTimer = null;
   let edgeSuppressed = false;
+  let edgeDragMoved = false;
+  let edgeDragStartY = 0;
+  let edgeLastDragAt = 0;
+  let lastStateCheckAt = 0;
+  let stateCheckInFlight = false;
   let lastSelection = "";
   let lastSource = null;
   let lastRect = null;
@@ -116,6 +121,10 @@
       .tc-edge.visible {
         opacity: 1;
         transform: translateX(0);
+        pointer-events: auto;
+      }
+      .tc-edge.hidden {
+        pointer-events: none;
       }
       .tc-buttons {
         display: flex;
@@ -167,6 +176,7 @@
     if (edgeSuppressed && visible) return;
     edgeVisible = visible;
     edgeButton.classList.toggle("visible", visible);
+    edgeButton.classList.toggle("hidden", !visible);
   };
 
   const setEdgeSuppressed = (suppressed) => {
@@ -176,15 +186,39 @@
     }
   };
 
+  const checkSidepanelState = async (showIfClosed) => {
+    if (stateCheckInFlight) return;
+    const now = Date.now();
+    if (!showIfClosed && now - lastStateCheckAt < 800) return;
+    lastStateCheckAt = now;
+    stateCheckInFlight = true;
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "SIDEPANEL_GET_STATE"
+      });
+      if (response?.ok) {
+        const isOpen = Boolean(response.isOpen);
+        setEdgeSuppressed(isOpen);
+        if (!isOpen && showIfClosed) {
+          setEdgeVisible(true);
+        }
+      }
+    } catch (error) {
+      // ignore
+    } finally {
+      stateCheckInFlight = false;
+    }
+  };
+
   const scheduleEdgeHide = () => {
     if (edgeHideTimer) {
       clearTimeout(edgeHideTimer);
     }
-    edgeHideTimer = setTimeout(() => {
-      if (!edgeDragging) {
+    if (!edgeDragging) {
+      edgeHideTimer = setTimeout(() => {
         setEdgeVisible(false);
-      }
-    }, 400);
+      }, 150);
+    }
   };
 
   const clampEdgeTop = (value) => {
@@ -314,9 +348,10 @@
   });
 
   window.addEventListener("mousemove", (event) => {
-    if (edgeSuppressed) return;
     if (edgeDragging) return;
     if (event.clientX >= window.innerWidth - 6) {
+      checkSidepanelState(true);
+      if (edgeSuppressed) return;
       setEdgeVisible(true);
       if (edgeHideTimer) {
         clearTimeout(edgeHideTimer);
@@ -343,6 +378,9 @@
   });
 
   edgeButton?.addEventListener("click", async (event) => {
+    if (edgeDragMoved || Date.now() - edgeLastDragAt < 250) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     await chrome.runtime.sendMessage({ type: "OPEN_SIDEPANEL" });
@@ -350,6 +388,8 @@
 
   edgeButton?.addEventListener("pointerdown", (event) => {
     edgeDragging = true;
+    edgeDragMoved = false;
+    edgeDragStartY = event.clientY;
     edgeButton.setPointerCapture(event.pointerId);
     const rect = edgeButton.getBoundingClientRect();
     edgeDragOffset = event.clientY - rect.top;
@@ -357,6 +397,9 @@
 
   edgeButton?.addEventListener("pointermove", (event) => {
     if (!edgeDragging) return;
+    if (Math.abs(event.clientY - edgeDragStartY) > 4) {
+      edgeDragMoved = true;
+    }
     const nextTop = clampEdgeTop(event.clientY - edgeDragOffset);
     edgeButton.style.top = `${nextTop}px`;
   });
@@ -364,6 +407,9 @@
   edgeButton?.addEventListener("pointerup", (event) => {
     edgeDragging = false;
     edgeButton.releasePointerCapture(event.pointerId);
+    if (edgeDragMoved) {
+      edgeLastDragAt = Date.now();
+    }
     scheduleEdgeHide();
   });
 

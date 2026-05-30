@@ -5,6 +5,7 @@ import { checkAndMigrateSchema } from "../shared/schema_migration.js";
 const logger = new Logger();
 const storageService = new StorageService(logger);
 const sidePanelByWindow = new Map();
+const SIDE_PANEL_TTL_MS = 6000;
 
 async function ensureDefaultCollector() {
   const collectors = await storageService.getCollectors();
@@ -153,7 +154,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { ok: false, error: "Missing window" };
       }
       await chrome.sidePanel.open({ windowId });
-      sidePanelByWindow.set(windowId, true);
+      sidePanelByWindow.set(windowId, {
+        isOpen: true,
+        lastSeen: Date.now()
+      });
       const tabs = await chrome.tabs.query({ windowId });
       await Promise.all(
         tabs.map((tab) =>
@@ -173,7 +177,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!windowId) {
         return { ok: false, error: "Missing window" };
       }
-      sidePanelByWindow.set(windowId, Boolean(message.isOpen));
+      sidePanelByWindow.set(windowId, {
+        isOpen: Boolean(message.isOpen),
+        lastSeen: message.isOpen ? Date.now() : 0
+      });
       const tabs = await chrome.tabs.query({ windowId });
       await Promise.all(
         tabs.map((tab) =>
@@ -188,12 +195,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true };
     }
 
+    if (message?.type === "SIDEPANEL_HEARTBEAT") {
+      const windowId = message.windowId;
+      if (!windowId) {
+        return { ok: false, error: "Missing window" };
+      }
+      const current = sidePanelByWindow.get(windowId);
+      sidePanelByWindow.set(windowId, {
+        isOpen: current?.isOpen ?? true,
+        lastSeen: Date.now()
+      });
+      return { ok: true };
+    }
+
     if (message?.type === "SIDEPANEL_GET_STATE") {
       const windowId = sender?.tab?.windowId;
       if (!windowId) {
         return { ok: false, error: "Missing window" };
       }
-      return { ok: true, isOpen: Boolean(sidePanelByWindow.get(windowId)) };
+      const entry = sidePanelByWindow.get(windowId);
+      const isOpen =
+        Boolean(entry?.isOpen) &&
+        Boolean(entry?.lastSeen) &&
+        Date.now() - entry.lastSeen < SIDE_PANEL_TTL_MS;
+      return { ok: true, isOpen };
     }
 
     return { ok: false, error: "Unknown message" };
