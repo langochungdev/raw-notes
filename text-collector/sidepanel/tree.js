@@ -28,6 +28,8 @@ export const createVaultTree = ({
   onDeleteEntry,
   onStatsChange
 }) => {
+  const hiddenNames = new Set([".rawnotes-share", ".rawnotes-share.json"]);
+  const isHiddenEntry = (entry) => entry.name.startsWith(".") || hiddenNames.has(entry.name);
   const menu = document.createElement("div");
   menu.className = "tree-menu hidden";
   document.body.appendChild(menu);
@@ -123,6 +125,9 @@ export const createVaultTree = ({
   const countFiles = async (dirHandle) => {
     let total = 0;
     for await (const child of dirHandle.values()) {
+      if (isHiddenEntry(child)) {
+        continue;
+      }
       if (child.kind === "file") {
         total += 1;
       } else if (child.kind === "directory") {
@@ -133,6 +138,9 @@ export const createVaultTree = ({
   };
 
   const renderEntry = async (entry, parentHandle, parentPath, depth) => {
+    if (isHiddenEntry(entry)) {
+      return null;
+    }
     const currentPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
     const isFolder = entry.kind === "directory";
     const isExpanded = getExpandedPaths().has(currentPath);
@@ -231,6 +239,9 @@ export const createVaultTree = ({
 
     let totalFiles = 0;
     for await (const entry of rootHandle.values()) {
+      if (isHiddenEntry(entry)) {
+        continue;
+      }
       const entryNode = await renderEntry(entry, rootHandle, "", 0);
       if (entryNode) {
         treeRootEl.appendChild(entryNode);
