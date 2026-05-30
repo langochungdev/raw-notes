@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RawNotes Manager</title>
+    <link rel="stylesheet" href="manager.css" />
+</head>
+
+<body>
+    <div class="app">
+        <header class="topbar">
+            <input id="search" type="search" placeholder="Search all items" />
+            <div class="topbar-actions">
+                <button id="manual-entry-toggle" type="button">Manual entry</button>
+                <button id="filter-toggle" type="button">Filter</button>
+            </div>
+        </header>
+        <div id="onboard-banner" class="onboard-banner hidden">
+            <div class="onboard-text">Welcome to RawNotes — pick folders to enable disk sync and vault integration.</div>
+            <div class="onboard-actions">
+                <button id="onboard-pick-collectors">Pick Collectors Folder</button>
+                <button id="onboard-pick-vault">Pick Vault</button>
+                <button id="onboard-done">Skip</button>
+            </div>
+        </div>
+        <main class="layout">
+            <aside class="collectors">
+                <div class="sidebar-header">
+                    <div class="section-title">Collectors</div>
+                    <button id="new-collector" type="button" class="icon-action" title="New collector">＋</button>
+                </div>
+                <div class="sidebar-group-title">CỦA TÔI</div>
+                <div id="collector-list" class="collector-list"></div>
+                <div class="sidebar-group-title sidebar-group-spacer">TOOLS</div>
+                <div class="collector-actions collector-tools">
+                    <button id="import-collector" type="button">Import</button>
+                    <button id="export-collector" type="button">Export</button>
+                </div>
+                <div class="collector-footer">
+                    <button id="view-logs" type="button">View logs</button>
+                    <button id="pick-folder" type="button">Settings</button>
+                </div>
+            </aside>
+            <section class="items">
+                <div class="section-title" id="items-title">Items</div>
+                <div id="manual-panel" class="manual-panel hidden">
+                    <form id="manual-entry" class="manual-entry">
+                        <div class="manual-row">
+                            <label class="manual-label" for="entry-text">Text</label>
+                            <textarea id="entry-text" rows="3" placeholder="Type or paste text"></textarea>
+                        </div>
+                        <div class="manual-row">
+                            <label class="manual-label" for="entry-note">Note</label>
+                            <textarea id="entry-note" rows="2" placeholder="Add a note"></textarea>
+                        </div>
+                        <div class="manual-grid">
+                            <div class="manual-row">
+                                <label class="manual-label" for="entry-tags">Tags</label>
+                                <input id="entry-tags" type="text" placeholder="tag1, tag2" />
+                            </div>
+                            <div class="manual-row">
+                                <label class="manual-label" for="entry-collector">Collector</label>
+                                <select id="entry-collector"></select>
+                            </div>
+                        </div>
+                        <div class="manual-actions">
+                            <button id="entry-save" type="submit">Add entry</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="items-toolbar">
+                    <label class="select-all">
+                        <input id="select-all" type="checkbox" />
+                        <span>Select all</span>
+                    </label>
+                    <button id="delete-selected" disabled>Delete selected</button>
+                </div>
+                <div id="item-list" class="item-list"></div>
+            </section>
+        </main>
+    </div>
+    <div id="log-modal" class="modal hidden">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <div class="modal-title">System Logs</div>
+                <div class="modal-actions">
+                    <button id="clear-logs">Clear All</button>
+                    <button id="copy-logs">Copy All</button>
+                    <button id="close-logs">Close</button>
+                </div>
+            </div>
+            <div class="log-filters">
+                <button class="log-filter active" data-log-filter="all">All</button>
+                <button class="log-filter" data-log-filter="INFO">INFO</button>
+                <button class="log-filter" data-log-filter="WARN">WARN</button>
+                <button class="log-filter" data-log-filter="ERROR">ERROR</button>
+            </div>
+            <div id="log-list" class="log-list"></div>
+        </div>
+    </div>
+    <div id="edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <div class="modal-title" id="edit-title">Edit Item</div>
+                <div class="modal-actions">
+                    <button id="cancel-edit" type="button">Cancel</button>
+                    <button id="save-edit" type="button">Save</button>
+                </div>
+            </div>
+            <div id="edit-error" class="edit-error"></div>
+            <div class="edit-body">
+                <div class="edit-row">
+                    <label class="edit-label" for="edit-text">Text</label>
+                    <textarea id="edit-text" class="edit-input" rows="4"></textarea>
+                </div>
+                <div class="edit-row">
+                    <label class="edit-label" for="edit-note">Note</label>
+                    <textarea id="edit-note" class="edit-input" rows="3"></textarea>
+                </div>
+                <div class="edit-row">
+                    <label class="edit-label" for="edit-tags">Tags</label>
+                    <input id="edit-tags" class="edit-input" type="text" placeholder="tag1, tag2" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../vendor/minisearch.min.js"></script>
+    <script type="module" src="manager.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RawNotes Notes</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+</head>
+
+<body>
+    <div class="shell">
+        <header class="shell-header">
+            <div class="shell-title">Notes</div>
+        </header>
+
+        <main class="shell-main">
+            <section id="empty-state" class="state state-empty">
+                <div class="empty-card">
+                    <div id="empty-message" class="empty-message">Chọn một thư mục để bắt đầu.</div>
+                    <button id="pick-vault-empty" type="button" class="primary-button">Chọn thư mục</button>
+                </div>
+            </section>
+
+            <section id="tree-state" class="state state-tree hidden" aria-label="Vault tree view">
+                <div class="tree-toolbar">
+                    <button id="vault-switch" type="button" class="vault-switch" title="Đổi thư mục">
+                        <span class="vault-switch-icon" aria-hidden="true">📁</span>
+                        <span id="vault-name" class="vault-switch-name"></span>
+                    </button>
+                    <div class="tree-toolbar-actions">
+                        <button id="create-file" type="button" class="icon-button" title="Tạo file mới">
+                            <span class="icon" aria-hidden="true">＋</span>
+                        </button>
+                        <button id="create-folder" type="button" class="icon-button" title="Tạo thư mục mới">
+                            <span class="icon" aria-hidden="true">▣</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="tree-root" class="tree-root" role="tree"></div>
+                <footer id="tree-footer" class="tree-footer"></footer>
+            </section>
+
+            <section id="editor-state" class="state state-editor hidden" aria-label="Editor view">
+                <div class="editor-topbar">
+                    <button id="back-to-tree" type="button" class="back-button">← Back</button>
+                    <div id="save-status" class="save-status">Saved</div>
+                </div>
+                <div class="editor-card">
+                    <input id="file-name" class="file-name-input" type="text" placeholder="Dòng đầu tiên là tên file..." />
+                    <div class="editor-wrap">
+                        <div id="editor-body" class="editor-body" aria-label="Note editor"></div>
+                        <div id="slash-menu" class="slash-menu hidden" role="menu" aria-label="Slash menu"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="node-menu" class="node-menu hidden" role="menu" aria-label="File actions"></div>
+
+    <script type="module" src="milkdown_loader.js"></script>
+    <script type="module" src="sidepanel.js"></script>
+</body>
+
+</html>
