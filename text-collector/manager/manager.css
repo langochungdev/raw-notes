@@ -194,6 +194,35 @@ button {
     margin-bottom: 12px;
 }
 
+.collector-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #4a4845;
+    background: #2f2d2a;
+    color: #f1f0ee;
+    font-size: 13px;
+}
+
+.collector-input:focus {
+    outline: 2px solid #d9a441;
+    outline-offset: 2px;
+}
+
+.collector-select-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 10px;
+}
+
+.collector-select-bar .outline-button.active {
+    border-color: #d9a441;
+    box-shadow: 0 0 0 1px #d9a441 inset;
+    color: #f1f0ee;
+}
+
 .sidebar-group-title {
     margin: 8px 0 10px;
     font-size: 11px;
@@ -347,6 +376,32 @@ button {
     align-items: center;
     gap: 10px;
     cursor: pointer;
+}
+
+.collector-select {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 1px solid #5a5753;
+    background: #2f2d2a;
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+}
+
+.collector-select::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    transform: scale(0);
+    transition: transform 0.12s ease;
+    background: #d9a441;
+}
+
+.collector-select:checked::before {
+    transform: scale(1);
 }
 
 .collector-card:hover {
@@ -561,12 +616,13 @@ input[type="checkbox"]:indeterminate::before {
 }
 
 .item-action {
-    padding: 6px 8px;
+    padding: 8px 12px;
     border-radius: 8px;
     border: 1px solid #4a4845;
     background: #383634;
     color: #f1f0ee;
-    font-size: 11px;
+    font-size: 13px;
+    min-height: 34px;
 }
 
 .text-highlight {

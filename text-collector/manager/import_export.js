@@ -4,6 +4,8 @@ export const attachImportExport = ({
   storage,
   logger,
   getActiveCollectorId,
+  isCollectorSelectMode,
+  getSelectedCollectorIds,
   getCollectors,
   loadCollectors,
   loadItems,
@@ -49,35 +51,39 @@ export const attachImportExport = ({
 
   exportButton.addEventListener("click", async () => {
     try {
-      const activeCollectorId = getActiveCollectorId();
-      if (!activeCollectorId) {
-        showNotice(doc, "Select a collector first");
-        return;
-      }
       if (!window.showSaveFilePicker) {
         showNotice(doc, "File picker not supported");
         return;
       }
-      const collector = getCollectors().find(
-        (entry) => entry.id === activeCollectorId
-      );
-      if (!collector) {
-        showNotice(doc, "Collector not found");
+      const selectedIds = isCollectorSelectMode?.()
+        ? Array.from(getSelectedCollectorIds?.() || [])
+        : [];
+      const collectors = getCollectors();
+      const exportIds = selectedIds.length > 0 ? selectedIds : [getActiveCollectorId()];
+      if (!exportIds[0]) {
+        showNotice(doc, "Select a collector first");
         return;
       }
-      const data = await storage.exportCollector(activeCollectorId);
-      const handle = await window.showSaveFilePicker({
-        suggestedName: `${collector.name}.json`,
-        types: [
-          {
-            description: "JSON",
-            accept: { "application/json": [".json"] }
-          }
-        ]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(JSON.stringify(data, null, 2));
-      await writable.close();
+      for (const collectorId of exportIds) {
+        const collector = collectors.find((entry) => entry.id === collectorId);
+        if (!collector) {
+          showNotice(doc, "Collector not found");
+          return;
+        }
+        const data = await storage.exportCollector(collectorId);
+        const handle = await window.showSaveFilePicker({
+          suggestedName: `${collector.name}.json`,
+          types: [
+            {
+              description: "JSON",
+              accept: { "application/json": [".json"] }
+            }
+          ]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+      }
       showNotice(doc, "Export complete");
     } catch (error) {
       await logger.log("ERROR", "export", error.message || "Export failed", {

@@ -14,6 +14,9 @@ export const createCollectorManager = ({
   collectorList,
   entryCollector,
   renderCollectors,
+  getCollectorSelectMode,
+  getSelectedCollectorIds,
+  toggleCollectorSelected,
   getActiveCollectorId,
   setActiveCollectorId,
   getCollectors,
@@ -36,7 +39,10 @@ export const createCollectorManager = ({
 
   const renderCollectorList = () => {
     renderCollectors(collectorList, getCollectors(), getActiveCollectorId(), {
+      selectionMode: getCollectorSelectMode?.(),
+      selectedCollectorIds: getSelectedCollectorIds?.(),
       onSelect: (id) => handleCollectorSelect(id),
+      onToggleSelect: (id) => toggleCollectorSelected?.(id),
       onRename: (collector) => handleCollectorRename(collector),
       onDelete: (collector) => handleCollectorDelete(collector),
       onColor: (collector) => handleCollectorColor(collector)

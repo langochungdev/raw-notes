@@ -53,12 +53,23 @@
         <main class="layout">
             <aside class="collectors">
                 <div class="sidebar-header">
-                    <div class="section-title">Collectors</div>
+                    <input id="new-collector-name" class="collector-input" type="text" placeholder="Collector name" />
                     <button id="new-collector" type="button" class="icon-action" title="New collector">
                         <span aria-hidden="true">+</span>
                     </button>
                 </div>
-                <div class="sidebar-group-title">CỦA TÔI</div>
+                <div class="collector-select-bar">
+                    <button id="collector-select-toggle" type="button" class="outline-button">Select</button>
+                    <button id="collector-delete-selected" type="button" class="icon-action hidden" title="Delete collectors">
+                        <span class="button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                    </button>
+                </div>
                 <div id="collector-list" class="collector-list"></div>
                 <div class="sidebar-group-title sidebar-group-spacer">TOOLS</div>
                 <div class="collector-actions collector-tools">

@@ -13,6 +13,19 @@ export const renderCollectors = (
     }
     card.role = "button";
     card.tabIndex = 0;
+    const selectionMode = actions?.selectionMode;
+    const selectedCollectorIds = actions?.selectedCollectorIds;
+    let selectInput = null;
+    if (selectionMode) {
+      selectInput = document.createElement("input");
+      selectInput.type = "checkbox";
+      selectInput.className = "collector-select";
+      selectInput.checked = selectedCollectorIds?.has(collector.id) || false;
+      selectInput.addEventListener("click", (event) => {
+        event.stopPropagation();
+        actions?.onToggleSelect?.(collector.id);
+      });
+    }
     const swatch = document.createElement("span");
     swatch.className = "collector-color";
     swatch.style.background = collector.color || "#d9a441";
@@ -21,6 +34,9 @@ export const renderCollectors = (
     name.textContent = collector.name;
     const info = document.createElement("div");
     info.className = "collector-info";
+    if (selectInput) {
+      info.appendChild(selectInput);
+    }
     info.appendChild(swatch);
     info.appendChild(name);
     const count = document.createElement("div");
@@ -28,11 +44,21 @@ export const renderCollectors = (
     count.textContent = `${collector.itemCount || 0}`;
     card.appendChild(info);
     card.appendChild(count);
-    card.addEventListener("click", () => actions?.onSelect?.(collector.id));
+    card.addEventListener("click", () => {
+      if (selectionMode) {
+        actions?.onToggleSelect?.(collector.id);
+        return;
+      }
+      actions?.onSelect?.(collector.id);
+    });
     card.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        actions?.onSelect?.(collector.id);
+        if (selectionMode) {
+          actions?.onToggleSelect?.(collector.id);
+        } else {
+          actions?.onSelect?.(collector.id);
+        }
       }
     });
     collectorList.appendChild(card);
@@ -190,9 +216,17 @@ export const renderItems = (
     content.appendChild(meta);
     card.appendChild(select);
     card.appendChild(content);
-    if (actions?.onEdit) {
+    if (actions?.onEdit || actions?.onCopyText) {
       const actionRow = document.createElement("div");
       actionRow.className = "item-actions";
+      if (actions?.onCopyText) {
+        const copyButton = document.createElement("button");
+        copyButton.type = "button";
+        copyButton.className = "item-action";
+        copyButton.textContent = "Copy";
+        copyButton.addEventListener("click", () => actions.onCopyText(item));
+        actionRow.appendChild(copyButton);
+      }
       const editButton = document.createElement("button");
       editButton.type = "button";
       editButton.className = "item-action";

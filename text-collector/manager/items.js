@@ -6,6 +6,7 @@ export const createItemManager = ({
   showNotice,
   openEditModal,
   onCopyShare,
+  onCopyText,
   reloadItems,
   itemsTitle,
   itemList,
@@ -63,7 +64,8 @@ export const createItemManager = ({
     itemsTitle.textContent = label;
     renderItems(itemList, results, getSelectedIds(), searchQuery, matchesById, {
       onEdit: (item) => handleItemEdit(item),
-      onCopyShare
+      onCopyShare,
+      onCopyText
     });
     updateSelectionState(
       selectAllInput,

@@ -24,6 +24,9 @@ const collectorList = document.getElementById("collector-list");
 const itemList = document.getElementById("item-list");
 const itemsTitle = document.getElementById("items-title");
 const newCollectorButton = document.getElementById("new-collector");
+const newCollectorNameInput = document.getElementById("new-collector-name");
+const collectorSelectToggle = document.getElementById("collector-select-toggle");
+const collectorDeleteSelected = document.getElementById("collector-delete-selected");
 const pickFolderButton = document.getElementById("pick-folder");
 const manualEntryToggle = document.getElementById("manual-entry-toggle");
 const filterToggle = document.getElementById("filter-toggle");
@@ -63,6 +66,8 @@ let allItems = [];
 let allCollectors = [];
 let currentResults = [];
 const selectedIds = new Set();
+const selectedCollectorIds = new Set();
+let isCollectorSelectMode = false;
 let reloadAllData = async () => {};
 
 const handleCopyShare = async (item) => {
@@ -70,6 +75,16 @@ const handleCopyShare = async (item) => {
   try {
     await navigator.clipboard.writeText(item.shareUrl);
     showNotice(document, "Link copied");
+  } catch (error) {
+    showNotice(document, "Copy failed");
+  }
+};
+
+const handleCopyText = async (item) => {
+  if (!item?.text) return;
+  try {
+    await navigator.clipboard.writeText(item.text);
+    showNotice(document, "Text copied");
   } catch (error) {
     showNotice(document, "Copy failed");
   }
@@ -106,6 +121,7 @@ const itemManager = createItemManager({
   showNotice,
   openEditModal: (item) => editModalManager.open(item),
   onCopyShare: (item) => handleCopyShare(item),
+  onCopyText: (item) => handleCopyText(item),
   reloadItems: () => reloadAllData(),
   itemsTitle,
   itemList,
@@ -129,6 +145,20 @@ const collectorManager = createCollectorManager({
   collectorList,
   entryCollector,
   renderCollectors,
+  getCollectorSelectMode: () => isCollectorSelectMode,
+  getSelectedCollectorIds: () => selectedCollectorIds,
+  toggleCollectorSelected: (id) => {
+    if (selectedCollectorIds.has(id)) {
+      selectedCollectorIds.delete(id);
+    } else {
+      selectedCollectorIds.add(id);
+    }
+    collectorDeleteSelected.classList.toggle(
+      "hidden",
+      selectedCollectorIds.size === 0
+    );
+    collectorManager.renderCollectorList();
+  },
   getActiveCollectorId: () => activeCollectorId,
   setActiveCollectorId: (id) => {
     activeCollectorId = id;
@@ -160,10 +190,20 @@ const scheduleReload = () => {
 
 
 newCollectorButton.addEventListener("click", async () => {
-  const name = window.prompt("Collector name");
-  if (!name) return;
+  const name = newCollectorNameInput.value.trim();
+  if (!name) {
+    showNotice(document, "Collector name is required");
+    return;
+  }
   await storage.createCollector({ name });
+  newCollectorNameInput.value = "";
   await reloadAllData();
+});
+
+newCollectorNameInput.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  newCollectorButton.click();
 });
 
 pickFolderButton.addEventListener("click", async () => {
@@ -181,12 +221,37 @@ filterToggle.addEventListener("click", () => {
   searchInput.focus();
 });
 
+collectorSelectToggle.addEventListener("click", () => {
+  isCollectorSelectMode = !isCollectorSelectMode;
+  collectorSelectToggle.classList.toggle("active", isCollectorSelectMode);
+  if (!isCollectorSelectMode) {
+    selectedCollectorIds.clear();
+    collectorDeleteSelected.classList.add("hidden");
+  }
+  collectorManager.renderCollectorList();
+});
+
+collectorDeleteSelected.addEventListener("click", async () => {
+  if (selectedCollectorIds.size === 0) return;
+  const ok = window.confirm("Delete selected collectors?");
+  if (!ok) return;
+  const ids = Array.from(selectedCollectorIds);
+  for (const id of ids) {
+    await storage.deleteCollector(id);
+  }
+  selectedCollectorIds.clear();
+  collectorDeleteSelected.classList.add("hidden");
+  await reloadAllData();
+});
+
 attachImportExport({
   importButton,
   exportButton,
   storage,
   logger,
   getActiveCollectorId: () => activeCollectorId,
+  isCollectorSelectMode: () => isCollectorSelectMode,
+  getSelectedCollectorIds: () => selectedCollectorIds,
   getCollectors: () => allCollectors,
   loadCollectors: collectorManager.loadCollectors,
   loadItems: itemManager.loadItems,
