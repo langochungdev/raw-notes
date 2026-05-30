@@ -2,6 +2,7 @@ export const attachSelectionHandlers = ({
   itemList,
   selectAllInput,
   deleteSelectedButton,
+  itemsCount,
   getCurrentResults,
   selectedIds,
   getAllItems,
@@ -69,6 +70,7 @@ export const attachSelectionHandlers = ({
     updateSelectionState(
       selectAllInput,
       deleteSelectedButton,
+      itemsCount,
       getCurrentResults(),
       selectedIds
     );

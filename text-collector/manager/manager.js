@@ -30,6 +30,7 @@ const filterToggle = document.getElementById("filter-toggle");
 const searchInput = document.getElementById("search");
 const selectAllInput = document.getElementById("select-all");
 const deleteSelectedButton = document.getElementById("delete-selected");
+const itemsCount = document.getElementById("items-count");
 const importButton = document.getElementById("import-collector");
 const exportButton = document.getElementById("export-collector");
 const viewLogsButton = document.getElementById("view-logs");
@@ -106,6 +107,7 @@ const itemManager = createItemManager({
   itemList,
   selectAllInput,
   deleteSelectedButton,
+  itemsCount,
   getActiveCollectorId: () => activeCollectorId,
   getSearchQuery: () => searchQuery,
   getSelectedIds: () => selectedIds,
@@ -213,6 +215,7 @@ attachSelectionHandlers({
   itemList,
   selectAllInput,
   deleteSelectedButton,
+  itemsCount,
   getCurrentResults: () => currentResults,
   selectedIds,
   getAllItems: () => allItems,

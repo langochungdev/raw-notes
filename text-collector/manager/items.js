@@ -11,6 +11,7 @@ export const createItemManager = ({
   itemList,
   selectAllInput,
   deleteSelectedButton,
+  itemsCount,
   getActiveCollectorId,
   getSearchQuery,
   getSelectedIds,
@@ -67,6 +68,7 @@ export const createItemManager = ({
     updateSelectionState(
       selectAllInput,
       deleteSelectedButton,
+      itemsCount,
       results,
       getSelectedIds()
     );

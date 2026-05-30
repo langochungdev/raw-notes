@@ -13,51 +13,21 @@ export const renderCollectors = (
     }
     card.role = "button";
     card.tabIndex = 0;
+    const swatch = document.createElement("span");
+    swatch.className = "collector-color";
+    swatch.style.background = collector.color || "#d9a441";
     const name = document.createElement("div");
     name.className = "collector-name";
     name.textContent = collector.name;
-    const swatch = document.createElement("span");
-    swatch.className = "collector-color";
-    swatch.style.background = collector.color || "#d97706";
-    name.prepend(swatch);
-    const meta = document.createElement("div");
-    meta.className = "collector-meta";
-    meta.textContent = `${collector.itemCount || 0} items`;
     const info = document.createElement("div");
     info.className = "collector-info";
+    info.appendChild(swatch);
     info.appendChild(name);
-    info.appendChild(meta);
-    const actionRow = document.createElement("div");
-    actionRow.className = "collector-actions-row";
-    const colorButton = document.createElement("button");
-    colorButton.type = "button";
-    colorButton.className = "collector-action";
-    colorButton.textContent = "Color";
-    colorButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      actions?.onColor?.(collector);
-    });
-    const renameButton = document.createElement("button");
-    renameButton.type = "button";
-    renameButton.className = "collector-action";
-    renameButton.textContent = "Rename";
-    renameButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      actions?.onRename?.(collector);
-    });
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "collector-action danger";
-    deleteButton.textContent = "Delete";
-    deleteButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      actions?.onDelete?.(collector);
-    });
-    actionRow.appendChild(colorButton);
-    actionRow.appendChild(renameButton);
-    actionRow.appendChild(deleteButton);
+    const count = document.createElement("div");
+    count.className = "collector-count";
+    count.textContent = `${collector.itemCount || 0}`;
     card.appendChild(info);
-    card.appendChild(actionRow);
+    card.appendChild(count);
     card.addEventListener("click", () => actions?.onSelect?.(collector.id));
     card.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -102,6 +72,27 @@ const renderHighlightedText = (container, text, terms) => {
   }
 };
 
+const formatRelativeTime = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  const diffMs = Date.now() - date.getTime();
+  const seconds = Math.max(0, Math.floor(diffMs / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+};
+
 export const renderItems = (
   itemList,
   items,
@@ -134,13 +125,6 @@ export const renderItems = (
     const text = document.createElement("div");
     text.className = "item-text";
     renderHighlightedText(text, item.text || "", terms);
-    const source = document.createElement("div");
-    source.className = "item-source";
-    renderHighlightedText(
-      source,
-      item.source?.title || item.source?.url || "No source",
-      terms
-    );
     content.appendChild(text);
     if (item.note) {
       const note = document.createElement("div");
@@ -148,6 +132,20 @@ export const renderItems = (
       renderHighlightedText(note, item.note, terms);
       content.appendChild(note);
     }
+    const meta = document.createElement("div");
+    meta.className = "item-meta";
+    const source = document.createElement("div");
+    source.className = "item-source";
+    renderHighlightedText(
+      source,
+      item.source?.url || item.source?.title || "No source",
+      terms
+    );
+    const time = document.createElement("div");
+    time.className = "item-time";
+    time.textContent = formatRelativeTime(item.updatedAt || item.createdAt);
+    meta.appendChild(source);
+    meta.appendChild(time);
     if (item.tags && item.tags.length > 0) {
       const tags = document.createElement("div");
       tags.className = "item-tags";
@@ -157,7 +155,7 @@ export const renderItems = (
         pill.textContent = tag;
         tags.appendChild(pill);
       });
-      content.appendChild(tags);
+      meta.appendChild(tags);
     }
     if (item.shareUrl) {
       const shareRow = document.createElement("div");
@@ -197,7 +195,7 @@ export const renderItems = (
       actionRow.appendChild(editButton);
       content.appendChild(actionRow);
     }
-    content.appendChild(source);
+    content.appendChild(meta);
     card.appendChild(select);
     card.appendChild(content);
     itemList.appendChild(card);
@@ -207,6 +205,7 @@ export const renderItems = (
 export const updateSelectionState = (
   selectAllInput,
   deleteSelectedButton,
+  itemsCount,
   currentResults,
   selectedIds
 ) => {
@@ -216,6 +215,9 @@ export const updateSelectionState = (
   selectAllInput.indeterminate = selected > 0 && selected < total;
   selectAllInput.checked = total > 0 && selected === total;
   deleteSelectedButton.disabled = selectedIds.size === 0;
+  if (itemsCount) {
+    itemsCount.textContent = `${total} items`;
+  }
 };
 
 export const showUndoToast = (doc, message, onUndo) => {
