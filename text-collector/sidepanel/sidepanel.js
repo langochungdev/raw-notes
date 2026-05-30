@@ -30,6 +30,28 @@ const shareMenu = document.getElementById("share-menu");
 const slashMenu = document.getElementById("slash-menu");
 const nodeMenu = document.getElementById("node-menu");
 
+const notifySidepanelState = async (isOpen) => {
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    if (!currentWindow?.id) return;
+    await chrome.runtime.sendMessage({
+      type: "SIDEPANEL_STATE",
+      windowId: currentWindow.id,
+      isOpen
+    });
+  } catch (error) {
+    await logger.log("WARN", "sidepanel", "State sync failed", {
+      message: error.message || "state sync failed"
+    });
+  }
+};
+
+window.addEventListener("beforeunload", () => {
+  notifySidepanelState(false);
+});
+
+notifySidepanelState(true);
+
 editorBody.dataset.placeholder = "Dòng đầu tiên là tên file...";
 
 const CURSOR_MARKER = "[[CURSOR]]";

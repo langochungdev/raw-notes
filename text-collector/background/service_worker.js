@@ -4,6 +4,7 @@ import { checkAndMigrateSchema } from "../shared/schema_migration.js";
 
 const logger = new Logger();
 const storageService = new StorageService(logger);
+const sidePanelByWindow = new Map();
 
 async function ensureDefaultCollector() {
   const collectors = await storageService.getCollectors();
@@ -144,6 +145,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "GET_ITEMS") {
       const items = await storageService.getItems();
       return { ok: true, items };
+    }
+
+    if (message?.type === "OPEN_SIDEPANEL") {
+      const windowId = sender?.tab?.windowId;
+      if (!windowId) {
+        return { ok: false, error: "Missing window" };
+      }
+      await chrome.sidePanel.open({ windowId });
+      sidePanelByWindow.set(windowId, true);
+      const tabs = await chrome.tabs.query({ windowId });
+      await Promise.all(
+        tabs.map((tab) =>
+          tab.id
+            ? chrome.tabs.sendMessage(tab.id, {
+                type: "SIDEPANEL_STATE",
+                isOpen: true
+              })
+            : Promise.resolve()
+        )
+      );
+      return { ok: true };
+    }
+
+    if (message?.type === "SIDEPANEL_STATE") {
+      const windowId = message.windowId;
+      if (!windowId) {
+        return { ok: false, error: "Missing window" };
+      }
+      sidePanelByWindow.set(windowId, Boolean(message.isOpen));
+      const tabs = await chrome.tabs.query({ windowId });
+      await Promise.all(
+        tabs.map((tab) =>
+          tab.id
+            ? chrome.tabs.sendMessage(tab.id, {
+                type: "SIDEPANEL_STATE",
+                isOpen: Boolean(message.isOpen)
+              })
+            : Promise.resolve()
+        )
+      );
+      return { ok: true };
+    }
+
+    if (message?.type === "SIDEPANEL_GET_STATE") {
+      const windowId = sender?.tab?.windowId;
+      if (!windowId) {
+        return { ok: false, error: "Missing window" };
+      }
+      return { ok: true, isOpen: Boolean(sidePanelByWindow.get(windowId)) };
     }
 
     return { ok: false, error: "Unknown message" };

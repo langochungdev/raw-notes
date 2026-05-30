@@ -2,6 +2,12 @@
   let host = null;
   let panel = null;
   let collectorButtons = null;
+  let edgeButton = null;
+  let edgeVisible = false;
+  let edgeDragging = false;
+  let edgeDragOffset = 0;
+  let edgeHideTimer = null;
+  let edgeSuppressed = false;
   let lastSelection = "";
   let lastSource = null;
   let lastRect = null;
@@ -85,6 +91,32 @@
         box-shadow: none;
         pointer-events: auto;
       }
+      .tc-edge {
+        position: fixed;
+        right: 0;
+        top: 40%;
+        width: 28px;
+        height: 56px;
+        background: #111;
+        border: 1px solid #2a2a2a;
+        border-right: none;
+        border-radius: 28px 0 0 28px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #f5f5f5;
+        font: 700 12px/1 Arial, sans-serif;
+        cursor: pointer;
+        pointer-events: auto;
+        opacity: 0;
+        transform: translateX(10px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+      .tc-edge.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
       .tc-buttons {
         display: flex;
         gap: 8px;
@@ -118,10 +150,47 @@
     collectorButtons.className = "tc-buttons";
     panel.appendChild(collectorButtons);
 
+    edgeButton = document.createElement("button");
+    edgeButton.className = "tc-edge";
+    edgeButton.type = "button";
+    edgeButton.textContent = "Notes";
+
     root.appendChild(panel);
+    root.appendChild(edgeButton);
     shadow.appendChild(style);
     shadow.appendChild(root);
     document.documentElement.appendChild(host);
+  };
+
+  const setEdgeVisible = (visible) => {
+    if (!edgeButton) return;
+    if (edgeSuppressed && visible) return;
+    edgeVisible = visible;
+    edgeButton.classList.toggle("visible", visible);
+  };
+
+  const setEdgeSuppressed = (suppressed) => {
+    edgeSuppressed = suppressed;
+    if (suppressed) {
+      setEdgeVisible(false);
+    }
+  };
+
+  const scheduleEdgeHide = () => {
+    if (edgeHideTimer) {
+      clearTimeout(edgeHideTimer);
+    }
+    edgeHideTimer = setTimeout(() => {
+      if (!edgeDragging) {
+        setEdgeVisible(false);
+      }
+    }, 400);
+  };
+
+  const clampEdgeTop = (value) => {
+    const height = edgeButton?.offsetHeight || 56;
+    const maxTop = window.innerHeight - height - 8;
+    return Math.max(8, Math.min(value, maxTop));
   };
 
   const positionPanel = (rect) => {
@@ -243,4 +312,73 @@
       closePanel();
     }
   });
+
+  window.addEventListener("mousemove", (event) => {
+    if (edgeSuppressed) return;
+    if (edgeDragging) return;
+    if (event.clientX >= window.innerWidth - 6) {
+      setEdgeVisible(true);
+      if (edgeHideTimer) {
+        clearTimeout(edgeHideTimer);
+        edgeHideTimer = null;
+      }
+    } else if (edgeVisible) {
+      scheduleEdgeHide();
+    }
+  });
+
+  edgeButton?.addEventListener("mouseenter", () => {
+    if (edgeSuppressed) return;
+    setEdgeVisible(true);
+    if (edgeHideTimer) {
+      clearTimeout(edgeHideTimer);
+      edgeHideTimer = null;
+    }
+  });
+
+  edgeButton?.addEventListener("mouseleave", () => {
+    if (!edgeDragging) {
+      scheduleEdgeHide();
+    }
+  });
+
+  edgeButton?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await chrome.runtime.sendMessage({ type: "OPEN_SIDEPANEL" });
+  });
+
+  edgeButton?.addEventListener("pointerdown", (event) => {
+    edgeDragging = true;
+    edgeButton.setPointerCapture(event.pointerId);
+    const rect = edgeButton.getBoundingClientRect();
+    edgeDragOffset = event.clientY - rect.top;
+  });
+
+  edgeButton?.addEventListener("pointermove", (event) => {
+    if (!edgeDragging) return;
+    const nextTop = clampEdgeTop(event.clientY - edgeDragOffset);
+    edgeButton.style.top = `${nextTop}px`;
+  });
+
+  edgeButton?.addEventListener("pointerup", (event) => {
+    edgeDragging = false;
+    edgeButton.releasePointerCapture(event.pointerId);
+    scheduleEdgeHide();
+  });
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === "SIDEPANEL_STATE") {
+      setEdgeSuppressed(Boolean(message.isOpen));
+    }
+  });
+
+  chrome.runtime
+    .sendMessage({ type: "SIDEPANEL_GET_STATE" })
+    .then((response) => {
+      if (response?.ok) {
+        setEdgeSuppressed(Boolean(response.isOpen));
+      }
+    })
+    .catch(() => {});
 })();
