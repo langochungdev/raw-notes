@@ -126,6 +126,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === "GET_COLLECTORS") {
+      await ensureDefaultCollector();
       const collectors = await storageService.getCollectors();
       return { ok: true, collectors };
     }

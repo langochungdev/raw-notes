@@ -105,8 +105,18 @@ export const attachSelectionHandlers = ({
       toast.remove();
       clearPendingDelete();
       await finalizeDelete(ids, snapshot);
-    }, 30000);
+    }, 6000);
 
     pendingDelete = { ids, timeoutId, snapshot };
+
+    const handleOutsideClick = async (event) => {
+      if (!pendingDelete || toast.contains(event.target)) return;
+      toast.remove();
+      clearPendingDelete();
+      document.removeEventListener("pointerdown", handleOutsideClick, true);
+      await finalizeDelete(ids, snapshot);
+    };
+
+    document.addEventListener("pointerdown", handleOutsideClick, true);
   });
 };

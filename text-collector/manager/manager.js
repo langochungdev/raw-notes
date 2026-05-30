@@ -56,6 +56,8 @@ const editNote = document.getElementById("edit-note");
 const editTags = document.getElementById("edit-tags");
 const editError = document.getElementById("edit-error");
 
+let reloadTimer = null;
+
 let activeCollectorId = null;
 let searchQuery = "";
 let allItems = [];
@@ -143,6 +145,15 @@ reloadAllData = async () => {
   await collectorManager.loadCollectors();
   await itemManager.loadItems();
   updateSearchPlaceholder();
+};
+
+const scheduleReload = () => {
+  if (reloadTimer) {
+    clearTimeout(reloadTimer);
+  }
+  reloadTimer = setTimeout(() => {
+    reloadAllData();
+  }, 150);
 };
 
 
@@ -255,6 +266,12 @@ attachLogViewer({
 const init = async () => {
   await checkAndMigrateSchema(logger);
   await reloadAllData();
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local") return;
+    if (changes.tc_items || changes.tc_collectors) {
+      scheduleReload();
+    }
+  });
   // Show onboarding banner if first run
   const stored = await chrome.storage.local.get("onboardDone");
   const onboardDone = stored?.onboardDone;

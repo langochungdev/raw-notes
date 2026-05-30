@@ -680,23 +680,40 @@ export class StorageService {
   async writeAllCollectorsToDisk() {
     const handle = await this.restoreCollectorDirectory();
     if (!handle) return;
-    const collectors = await this.getCollectors();
-    await this.writeJsonFile(handle, "schema.json", {
-      schemaVersion: 3
-    });
-    await this.writeJsonFile(handle, "collectors.json", collectors);
+    try {
+      const collectors = await this.getCollectors();
+      await this.writeJsonFile(handle, "schema.json", {
+        schemaVersion: 3
+      });
+      await this.writeJsonFile(handle, "collectors.json", collectors);
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("WARN", "fs", "Failed to sync collectors", {
+          message: error.message || "write failed"
+        });
+      }
+    }
   }
 
   async writeCollectorItemsToDisk(collector, allItems, syncCollectors = true) {
     const handle = await this.restoreCollectorDirectory();
     if (!handle) return;
-    const collectorDir = await handle.getDirectoryHandle(collector.name, {
-      create: true
-    });
-    const items = allItems.filter((item) => item.collectorId === collector.id);
-    await this.writeJsonFile(collectorDir, "items.json", items);
-    if (syncCollectors) {
-      await this.writeAllCollectorsToDisk();
+    try {
+      const collectorDir = await handle.getDirectoryHandle(collector.name, {
+        create: true
+      });
+      const items = allItems.filter((item) => item.collectorId === collector.id);
+      await this.writeJsonFile(collectorDir, "items.json", items);
+      if (syncCollectors) {
+        await this.writeAllCollectorsToDisk();
+      }
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("WARN", "fs", "Failed to sync collector items", {
+          collectorId: collector.id,
+          message: error.message || "write failed"
+        });
+      }
     }
   }
 
@@ -726,11 +743,20 @@ export class StorageService {
   }
 
   async writeJsonFile(dirHandle, fileName, data) {
-    const fileHandle = await dirHandle.getFileHandle(fileName, {
-      create: true
-    });
-    const writable = await fileHandle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
-    await writable.close();
+    try {
+      const fileHandle = await dirHandle.getFileHandle(fileName, {
+        create: true
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("WARN", "fs", "Failed to write file", {
+          fileName,
+          message: error.message || "write failed"
+        });
+      }
+    }
   }
 }
