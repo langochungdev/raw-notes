@@ -40,9 +40,9 @@ export const createVaultTree = ({
     menuState = null;
   };
 
-  const openMenu = (anchor, entryInfo) => {
+  const openMenu = (anchor, entryInfo, labelEl) => {
     const rect = anchor.getBoundingClientRect();
-    menuState = entryInfo;
+    menuState = { entryInfo, labelEl };
     menu.innerHTML = `
       <button type="button" data-action="rename">Rename</button>
       <button type="button" data-action="delete" class="danger">Delete</button>
@@ -52,25 +52,64 @@ export const createVaultTree = ({
     menu.classList.remove("hidden");
   };
 
+  const startRename = async (entryInfo, labelEl) => {
+    if (!labelEl) return;
+    const originalText = labelEl.textContent || "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tree-rename-input";
+    input.value = originalText;
+    labelEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const finish = async (apply) => {
+      input.removeEventListener("blur", onBlur);
+      input.removeEventListener("keydown", onKeydown);
+      if (!apply) {
+        input.replaceWith(labelEl);
+        return;
+      }
+      const nextName = input.value.trim();
+      if (nextName && nextName !== entryInfo.entry.name) {
+        await onRenameEntry?.(entryInfo, nextName);
+      } else {
+        input.replaceWith(labelEl);
+      }
+    };
+
+    const onBlur = () => {
+      finish(true);
+    };
+
+    const onKeydown = (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        finish(true);
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      }
+    };
+
+    input.addEventListener("blur", onBlur);
+    input.addEventListener("keydown", onKeydown);
+  };
+
   menu.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-action]");
     if (!button || !menuState) return;
     const action = button.dataset.action;
-    const entry = menuState;
+    const { entryInfo, labelEl } = menuState;
     hideMenu();
     if (action === "rename") {
-      const nextName = window.prompt(
-        `Rename ${entry.entry.name}`,
-        entry.entry.name
-      );
-      if (nextName && nextName !== entry.entry.name) {
-        await onRenameEntry?.(entry, nextName);
-      }
+      await startRename(entryInfo, labelEl);
     }
     if (action === "delete") {
-      const ok = window.confirm(`Delete ${entry.entry.name}?`);
+      const ok = window.confirm(`Delete ${entryInfo.entry.name}?`);
       if (ok) {
-        await onDeleteEntry?.(entry);
+        await onDeleteEntry?.(entryInfo);
       }
     }
   });
@@ -159,7 +198,7 @@ export const createVaultTree = ({
     more.innerHTML = createIcon("dots");
     more.addEventListener("click", (event) => {
       event.stopPropagation();
-      openMenu(more, { entry, parentHandle, parentPath, currentPath });
+      openMenu(more, { entry, parentHandle, parentPath, currentPath }, label);
     });
 
     row.appendChild(left);
