@@ -11,6 +11,7 @@ export const attachLogViewer = ({
   doc
 }) => {
   let logFilter = "all";
+  let refreshId = null;
 
   const setLogFilter = (nextFilter) => {
     logFilter = nextFilter;
@@ -62,19 +63,35 @@ export const attachLogViewer = ({
     renderLogs(logs);
   };
 
+  const startRefresh = () => {
+    if (refreshId) return;
+    refreshId = setInterval(() => {
+      loadLogs();
+    }, 1500);
+  };
+
+  const stopRefresh = () => {
+    if (!refreshId) return;
+    clearInterval(refreshId);
+    refreshId = null;
+  };
+
   viewLogsButton.addEventListener("click", async () => {
     logModal.classList.remove("hidden");
     setLogFilter("all");
     await loadLogs();
+    startRefresh();
   });
 
   closeLogsButton.addEventListener("click", () => {
     logModal.classList.add("hidden");
+    stopRefresh();
   });
 
   logModal.addEventListener("pointerdown", (event) => {
     if (event.target === logModal) {
       logModal.classList.add("hidden");
+      stopRefresh();
     }
   });
 

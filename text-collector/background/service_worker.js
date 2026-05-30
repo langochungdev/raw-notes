@@ -26,6 +26,92 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const run = async () => {
+    if (message?.type === "SHARE_REQUEST") {
+      const { action, payload } = message || {};
+      const tab = await chrome.tabs.create({
+        url: "https://rentry.co/",
+        active: false
+      });
+      const tabId = tab.id;
+      if (!tabId) {
+        return { ok: false, error: "Failed to open helper tab" };
+      }
+      const waitForLoad = new Promise((resolve) => {
+        const handler = (updatedId, info) => {
+          if (updatedId === tabId && info.status === "complete") {
+            chrome.tabs.onUpdated.removeListener(handler);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(handler);
+      });
+      try {
+        await waitForLoad;
+        const results = await chrome.scripting.executeScript({
+          target: { tabId },
+          args: [action, payload],
+          func: async (shareAction, sharePayload) => {
+            try {
+              const csrfEl = document.querySelector('input[name="csrfmiddlewaretoken"]');
+              const csrfToken = csrfEl ? csrfEl.value : "";
+              const shareUrl = sharePayload.shareUrl || "";
+              if (!shareUrl) {
+                return { ok: false, error: "Missing share url" };
+              }
+              const parsed = new URL(shareUrl);
+              const slug = parsed.pathname.replace(/^\//, "");
+              if (!slug) {
+                return { ok: false, error: "Missing share slug" };
+              }
+              const endpoint =
+                shareAction === "delete"
+                  ? `https://rentry.co/api/delete/${slug}`
+                  : `https://rentry.co/api/edit/${slug}`;
+              const payload = new URLSearchParams();
+              if (csrfToken) {
+                payload.set("csrfmiddlewaretoken", csrfToken);
+              }
+              payload.set("edit_code", sharePayload.editCode || "");
+              if (shareAction === "update") {
+                payload.set("text", sharePayload.markdown || "");
+              }
+              const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "X-CSRFToken": csrfToken
+                },
+                body: payload
+              });
+              const text = await response.text();
+              if (!response.ok) {
+                return { ok: false, error: text || "Share request failed" };
+              }
+              try {
+                const parsedResponse = JSON.parse(text);
+                if (parsedResponse?.status && String(parsedResponse.status) !== "200") {
+                  return { ok: false, error: parsedResponse?.content || "Share request failed" };
+                }
+              } catch (error) {
+                if (error instanceof SyntaxError) {
+                  return { ok: true };
+                }
+                return { ok: false, error: error.message || "Share request failed" };
+              }
+              return { ok: true };
+            } catch (error) {
+              return { ok: false, error: error.message || "Share request failed" };
+            }
+          }
+        });
+        const result = results?.[0]?.result;
+        return result?.ok
+          ? { ok: true }
+          : { ok: false, error: result?.error || "Share request failed" };
+      } finally {
+        await chrome.tabs.remove(tabId);
+      }
+    }
     if (message?.type === "SAVE_ITEM") {
       const collectorId = message.collectorId || (await ensureDefaultCollector()).id;
       const item = await storageService.saveItem({

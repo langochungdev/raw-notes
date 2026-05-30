@@ -118,6 +118,14 @@ const getShareSlug = (shareUrl) => {
   }
 };
 
+const buildShareEndpoint = (base, shareUrl) => {
+  const slug = getShareSlug(shareUrl);
+  if (!slug) {
+    throw new Error("Missing share url");
+  }
+  return `${base}/${slug}`;
+};
+
 export class StorageService {
   constructor(logger) {
     this.logger = logger;
@@ -290,55 +298,89 @@ export class StorageService {
     return token;
   }
 
-  async requestShareUpdate(editCode, markdown, shareUrl = "") {
-    const csrfToken = await this.getRentryCsrfToken();
-    const slug = getShareSlug(shareUrl);
-    const payload = new URLSearchParams();
-    payload.set("edit_code", editCode);
-    if (slug) {
-      payload.set("url", slug);
-    }
-    payload.set("text", markdown);
-    const response = await fetchWithTimeout(SHARE_ENDPOINTS.update, {
+  async postShareRequest(endpoint, payload, useCsrf) {
+    const headers = {
+      "Content-Type": "application/x-www-form-urlencoded"
+    };
+    const options = {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRFToken": csrfToken
-      },
-      body: payload,
-      credentials: "include",
-      referrer: "https://rentry.co/",
-      referrerPolicy: "origin"
-    });
+      headers,
+      body: payload
+    };
+    if (useCsrf) {
+      const csrfToken = await this.getRentryCsrfToken();
+      headers["X-CSRFToken"] = csrfToken;
+      options.credentials = "include";
+      options.referrer = "https://rentry.co/";
+      options.referrerPolicy = "origin";
+    } else {
+      options.credentials = "omit";
+    }
+    const response = await fetchWithTimeout(endpoint, options);
+    const responseText = await response.text();
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Share update failed");
+      throw new Error(responseText || "Share request failed");
+    }
+    try {
+      const parsed = JSON.parse(responseText);
+      if (parsed?.status && String(parsed.status) !== "200") {
+        throw new Error(parsed?.content || "Share request failed");
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return true;
+      }
+      throw error;
     }
     return true;
   }
 
-  async requestShareDelete(editCode, shareUrl = "") {
-    const csrfToken = await this.getRentryCsrfToken();
-    const slug = getShareSlug(shareUrl);
+  async requestShareUpdate(editCode, markdown, shareUrl = "") {
+    const endpoint = buildShareEndpoint(SHARE_ENDPOINTS.update, shareUrl);
     const payload = new URLSearchParams();
     payload.set("edit_code", editCode);
-    if (slug) {
-      payload.set("url", slug);
+    payload.set("text", markdown);
+    try {
+      await this.postShareRequest(endpoint, payload, false);
+      return true;
+    } catch (error) {
+      try {
+        await this.postShareRequest(endpoint, payload, true);
+        return true;
+      } catch (csrfError) {
+        return this.requestShareViaTab("update", { editCode, markdown, shareUrl });
+      }
     }
-    const response = await fetchWithTimeout(SHARE_ENDPOINTS.delete, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRFToken": csrfToken
-      },
-      body: payload,
-      credentials: "include",
-      referrer: "https://rentry.co/",
-      referrerPolicy: "origin"
+  }
+
+  async requestShareDelete(editCode, shareUrl = "") {
+    const endpoint = buildShareEndpoint(SHARE_ENDPOINTS.delete, shareUrl);
+    const payload = new URLSearchParams();
+    payload.set("edit_code", editCode);
+    try {
+      await this.postShareRequest(endpoint, payload, false);
+      return true;
+    } catch (error) {
+      try {
+        await this.postShareRequest(endpoint, payload, true);
+        return true;
+      } catch (csrfError) {
+        return this.requestShareViaTab("delete", { editCode, shareUrl });
+      }
+    }
+  }
+
+  async requestShareViaTab(action, payload) {
+    if (!chrome?.runtime?.sendMessage) {
+      throw new Error("Share request blocked by origin policy");
+    }
+    const response = await chrome.runtime.sendMessage({
+      type: "SHARE_REQUEST",
+      action,
+      payload
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Share delete failed");
+    if (!response?.ok) {
+      throw new Error(response?.error || "Share request failed");
     }
     return true;
   }
