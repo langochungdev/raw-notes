@@ -41,6 +41,7 @@ export const createVaultTree = ({
   let dragState = null;
   let dragOverRow = null;
   let dragSourceRow = null;
+  let dragOverPosition = null;
   let dragGhost = null;
   let dragActive = false;
   let lastDragTime = 0;
@@ -134,8 +135,10 @@ export const createVaultTree = ({
 
   const clearDragOver = () => {
     if (!dragOverRow) return;
-    dragOverRow.classList.remove("drag-over");
+    dragOverRow.classList.remove("drag-over", "drag-over-line", "drag-over-inside");
+    dragOverRow.style.removeProperty("--drop-line-offset");
     dragOverRow = null;
+    dragOverPosition = null;
   };
 
   const clearDragSource = () => {
@@ -181,10 +184,36 @@ export const createVaultTree = ({
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const row = target?.closest?.(".tree-row");
     if (row && dragSourceRow && row === dragSourceRow) return;
-    if (!row || row === dragOverRow) return;
-    clearDragOver();
-    dragOverRow = row;
-    dragOverRow.classList.add("drag-over");
+    if (!row) {
+      clearDragOver();
+      return;
+    }
+    const entryInfo = rowEntryMap.get(row);
+    if (!entryInfo) return;
+    const rect = row.getBoundingClientRect();
+    const offsetY = (event.clientY - rect.top) / Math.max(1, rect.height);
+    const isFolder = entryInfo.entry.kind === "directory";
+    let position = "before";
+    if (offsetY > 0.7) {
+      position = "after";
+    } else if (offsetY > 0.3 && isFolder) {
+      position = "inside";
+    }
+    if (dragOverRow !== row || dragOverPosition !== position) {
+      clearDragOver();
+      dragOverRow = row;
+      dragOverPosition = position;
+      row.classList.add("drag-over");
+      if (position === "inside") {
+        row.classList.add("drag-over-inside");
+      } else if (position === "after") {
+        row.classList.add("drag-over-line");
+        row.style.setProperty("--drop-line-offset", "calc(100% - 2px)");
+      } else {
+        row.classList.add("drag-over-line");
+        row.style.setProperty("--drop-line-offset", "2px");
+      }
+    }
   };
 
   const handlePointerUp = async (event) => {
@@ -192,6 +221,7 @@ export const createVaultTree = ({
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const dropRow = target?.closest?.(".tree-row") || dragOverRow;
     let targetInfo = dropRow ? rowEntryMap.get(dropRow) : null;
+    let dropPosition = dragOverPosition;
     if (!targetInfo && treeRootEl.contains(target)) {
       const rootHandle = getRootHandle();
       if (rootHandle) {
@@ -201,6 +231,7 @@ export const createVaultTree = ({
           parentPath: "",
           currentPath: ""
         };
+        dropPosition = "inside";
       }
     }
     clearDragOver();
@@ -211,7 +242,7 @@ export const createVaultTree = ({
     dragState = null;
     setDragActive(false);
     if (shouldDrop && sourceInfo && targetInfo) {
-      await onDrop?.(sourceInfo, targetInfo);
+      await onDrop?.(sourceInfo, targetInfo, dropPosition);
       lastDragTime = Date.now();
     }
     document.removeEventListener("pointermove", handlePointerMove);

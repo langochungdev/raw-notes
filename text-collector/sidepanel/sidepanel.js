@@ -258,7 +258,7 @@ const tree = createVaultTree({
   getExpandedPaths: () => app.expandedPaths,
   toggleExpandedPath,
   getOrderForPath: (path) => getOrderForPath(path),
-  onDrop: async (sourceInfo, targetInfo) => {
+  onDrop: async (sourceInfo, targetInfo, dropPosition) => {
     if (!sourceInfo || !targetInfo) return;
     if (sourceInfo.currentPath === targetInfo.currentPath) return;
 
@@ -267,7 +267,7 @@ const tree = createVaultTree({
     const sourceName = sourceInfo.entry.name;
     const targetName = targetInfo.entry.name;
 
-    if (targetInfo.entry.kind === "directory" && sourceInfo.entry.kind === "file") {
+    if (targetInfo.entry.kind === "directory" && sourceInfo.entry.kind === "file" && dropPosition === "inside") {
       if (targetInfo.currentPath === sourceParentPath) {
         return;
       }
@@ -303,7 +303,7 @@ const tree = createVaultTree({
       return;
     }
 
-    if (targetInfo.entry.kind === "directory" && targetInfo.currentPath === "" && sourceInfo.entry.kind === "file") {
+    if (targetInfo.entry.kind === "directory" && targetInfo.currentPath === "" && sourceInfo.entry.kind === "file" && dropPosition === "inside") {
       if (!app.rootHandle || sourceParentPath === "") {
         return;
       }
@@ -347,7 +347,8 @@ const tree = createVaultTree({
     if (insertIndex === -1) {
       nextOrder.push(sourceName);
     } else {
-      nextOrder.splice(insertIndex, 0, sourceName);
+      const offset = dropPosition === "after" ? 1 : 0;
+      nextOrder.splice(insertIndex + offset, 0, sourceName);
     }
     await setOrderForPath(sourceParentPath, nextOrder);
     await refreshTree();

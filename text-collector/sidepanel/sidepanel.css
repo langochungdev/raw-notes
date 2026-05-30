@@ -183,6 +183,7 @@ button {
     border-radius: 12px;
     font-size: 14px;
     color: #e5e7eb;
+    position: relative;
 }
 
 .tree-row.drag-over {
@@ -193,6 +194,21 @@ button {
 .tree-row.drag-source {
     background: #131313;
     outline: 1px solid #2a2a2a;
+}
+
+.tree-row.drag-over-line::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 2px;
+    background: #3a3a3a;
+    top: var(--drop-line-offset, 2px);
+}
+
+.tree-row.drag-over-inside {
+    background: #1c1a18;
+    outline: 1px solid #3a3a3a;
 }
 
 .tree-dragging .tree-row {
