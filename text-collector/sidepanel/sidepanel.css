@@ -511,3 +511,26 @@ button {
         color: #fff;
     }
 }
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #353535;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
