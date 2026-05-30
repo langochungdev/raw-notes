@@ -146,7 +146,15 @@
                         </label>
                         <div id="items-count" class="items-count">0 items</div>
                     </div>
-                    <button id="delete-selected" class="danger-outline" disabled>Delete selected</button>
+                    <button id="delete-selected" class="icon-action danger-icon is-hidden" type="button" aria-label="Delete selected" disabled>
+                        <span class="button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                    </button>
                 </div>
                 <div id="item-list" class="item-list"></div>
                 <div class="status-footer">

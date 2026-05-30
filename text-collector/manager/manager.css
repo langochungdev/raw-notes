@@ -178,6 +178,12 @@ body {
     display: none !important;
 }
 
+.is-hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .icon-action {
     width: 32px;
     height: 32px;
@@ -452,6 +458,26 @@ margin-bottom: 12px;
 .items-count {
     font-size: 13px;
     color: #c7c3be;
+}
+
+.items-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.danger-icon {
+    background: transparent;
+    color: #f0b5b1;
+    border-color: #7a3a36;
+}
+
+#delete-selected {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
 }
 
 .collector-card {

@@ -252,7 +252,7 @@ export const updateSelectionState = (
   selectAllInput.indeterminate = selected > 0 && selected < total;
   selectAllInput.checked = total > 0 && selected === total;
   deleteSelectedButton.disabled = selectedIds.size === 0;
-  deleteSelectedButton.classList.toggle("hidden", selectedIds.size === 0);
+  deleteSelectedButton.classList.toggle("is-hidden", selectedIds.size === 0);
   if (itemsCount) {
     itemsCount.textContent = `${total} items`;
   }
