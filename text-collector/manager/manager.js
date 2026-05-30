@@ -31,6 +31,8 @@ const pickFolderButton = document.getElementById("pick-folder");
 const manualEntryToggle = document.getElementById("manual-entry-toggle");
 const filterToggle = document.getElementById("filter-toggle");
 const searchInput = document.getElementById("search");
+const searchCollectorsToggle = document.getElementById("search-collectors-toggle");
+const searchCollectorsPanel = document.getElementById("search-collectors-panel");
 const selectAllInput = document.getElementById("select-all");
 const deleteSelectedButton = document.getElementById("delete-selected");
 const itemsCount = document.getElementById("items-count");
@@ -68,6 +70,8 @@ let currentResults = [];
 const selectedIds = new Set();
 const selectedCollectorIds = new Set();
 let isCollectorSelectMode = false;
+let searchCollectorIds = ["__all__"];
+let isSearchCollectorOpen = false;
 let reloadAllData = async () => {};
 
 const handleCopyShare = async (item) => {
@@ -95,6 +99,76 @@ const updateSearchPlaceholder = () => {
   searchInput.placeholder = activeCollector
     ? `Search in ${activeCollector.name}...`
     : "Search all items";
+};
+
+const updateSearchCollectorOptions = () => {
+  if (!searchCollectorsPanel || !searchCollectorsToggle) return;
+  const selected = new Set(searchCollectorIds);
+  searchCollectorsPanel.innerHTML = "";
+
+  const buildRow = (value, label) => {
+    const row = document.createElement("label");
+    row.className = "search-collector-item";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = value;
+    input.checked = selected.has(value) || (value === "__all__" && selected.size === 0);
+    input.addEventListener("change", () => {
+      if (value === "__all__") {
+        searchCollectorIds = ["__all__"];
+      } else if (input.checked) {
+        searchCollectorIds = Array.from(new Set([...selected, value])).filter(
+          (id) => id !== "__all__"
+        );
+      } else {
+        searchCollectorIds = Array.from(selected).filter(
+          (id) => id !== value && id !== "__all__"
+        );
+      }
+      if (searchCollectorIds.length === 0) {
+        searchCollectorIds = ["__all__"];
+      }
+      updateSearchCollectorOptions();
+      itemManager.refreshItems();
+    });
+    const text = document.createElement("span");
+    text.textContent = label;
+    row.appendChild(input);
+    row.appendChild(text);
+    searchCollectorsPanel.appendChild(row);
+  };
+
+  buildRow("__all__", "All collectors");
+  allCollectors.forEach((collector) => {
+    buildRow(collector.id, collector.name);
+  });
+
+  const labelMap = new Map(allCollectors.map((collector) => [collector.id, collector.name]));
+  if (selected.size === 0 || selected.has("__all__")) {
+    searchCollectorsToggle.textContent = "All collectors";
+  } else if (selected.size === 1) {
+    const id = Array.from(selected)[0];
+    searchCollectorsToggle.textContent = labelMap.get(id) || "1 collector";
+  } else {
+    searchCollectorsToggle.textContent = `${selected.size} collectors`;
+  }
+};
+
+const closeSearchCollectorPanel = () => {
+  if (!searchCollectorsPanel || !searchCollectorsToggle) return;
+  isSearchCollectorOpen = false;
+  searchCollectorsPanel.classList.add("hidden");
+  searchCollectorsToggle.setAttribute("aria-expanded", "false");
+};
+
+const toggleSearchCollectorPanel = () => {
+  if (!searchCollectorsPanel || !searchCollectorsToggle) return;
+  isSearchCollectorOpen = !isSearchCollectorOpen;
+  searchCollectorsPanel.classList.toggle("hidden", !isSearchCollectorOpen);
+  searchCollectorsToggle.setAttribute(
+    "aria-expanded",
+    isSearchCollectorOpen ? "true" : "false"
+  );
 };
 
 const searchService = new SearchService();
@@ -129,6 +203,7 @@ const itemManager = createItemManager({
   deleteSelectedButton,
   itemsCount,
   getActiveCollectorId: () => activeCollectorId,
+  getSearchCollectorIds: () => searchCollectorIds,
   getSearchQuery: () => searchQuery,
   getSelectedIds: () => selectedIds,
   setCurrentResults: (results) => {
@@ -168,6 +243,7 @@ const collectorManager = createCollectorManager({
   setCollectors: (collectors) => {
     allCollectors = collectors;
     updateSearchPlaceholder();
+    updateSearchCollectorOptions();
   },
   loadItems: itemManager.loadItems,
   onActiveCollectorChange: () => updateSearchPlaceholder()
@@ -219,6 +295,22 @@ searchInput.addEventListener("input", () => {
 
 filterToggle.addEventListener("click", () => {
   searchInput.focus();
+});
+
+searchCollectorsToggle.addEventListener("click", (event) => {
+  event.preventDefault();
+  toggleSearchCollectorPanel();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!isSearchCollectorOpen) return;
+  if (
+    searchCollectorsPanel.contains(event.target) ||
+    searchCollectorsToggle.contains(event.target)
+  ) {
+    return;
+  }
+  closeSearchCollectorPanel();
 });
 
 collectorSelectToggle.addEventListener("click", () => {

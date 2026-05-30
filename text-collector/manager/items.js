@@ -14,6 +14,7 @@ export const createItemManager = ({
   deleteSelectedButton,
   itemsCount,
   getActiveCollectorId,
+  getSearchCollectorIds,
   getSearchQuery,
   getSelectedIds,
   setCurrentResults,
@@ -55,9 +56,17 @@ export const createItemManager = ({
     const { items: searchResults, matchesById } =
       searchService.searchWithMatches(searchQuery);
     let results = searchResults;
-    const activeCollectorId = getActiveCollectorId();
-    if (activeCollectorId) {
-      results = results.filter((item) => item.collectorId === activeCollectorId);
+    const searchCollectorIds = getSearchCollectorIds?.() || [];
+    const isAllCollectors =
+      searchCollectorIds.length === 0 || searchCollectorIds.includes("__all__");
+    if (!isAllCollectors) {
+      const allowed = new Set(searchCollectorIds);
+      results = results.filter((item) => allowed.has(item.collectorId));
+    } else {
+      const activeCollectorId = getActiveCollectorId();
+      if (activeCollectorId) {
+        results = results.filter((item) => item.collectorId === activeCollectorId);
+      }
     }
     setCurrentResults(results);
     const label = searchQuery ? `Results (${results.length})` : "Items";
