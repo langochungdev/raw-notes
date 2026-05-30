@@ -58,6 +58,7 @@ const editText = document.getElementById("edit-text");
 const editNote = document.getElementById("edit-note");
 const editTags = document.getElementById("edit-tags");
 const editError = document.getElementById("edit-error");
+const miniSearchStatus = document.getElementById("minisearch-status");
 
 let reloadTimer = null;
 
@@ -98,6 +99,16 @@ const updateSearchPlaceholder = () => {
   searchInput.placeholder = activeCollector
     ? `Search in ${activeCollector.name}...`
     : "Search all items";
+};
+
+const updateMiniSearchStatus = () => {
+  if (!miniSearchStatus) return;
+  miniSearchStatus.textContent = `MiniSearch ready · ${allItems.length} indexed`;
+};
+
+const setAllItemsState = (items) => {
+  allItems = items;
+  updateMiniSearchStatus();
 };
 
 const updateSearchCollectorOptions = () => {
@@ -208,9 +219,7 @@ const itemManager = createItemManager({
   setCurrentResults: (results) => {
     currentResults = results;
   },
-  setAllItems: (items) => {
-    allItems = items;
-  },
+  setAllItems: (items) => setAllItemsState(items),
   getAllItems: () => allItems
 });
 
@@ -252,6 +261,7 @@ reloadAllData = async () => {
   await collectorManager.loadCollectors();
   await itemManager.loadItems();
   updateSearchPlaceholder();
+  updateMiniSearchStatus();
 };
 
 const scheduleReload = () => {
@@ -356,7 +366,7 @@ attachManualEntry({
   getActiveCollectorId: () => activeCollectorId,
   getAllItems: () => allItems,
   setAllItems: (items) => {
-    allItems = items;
+    setAllItemsState(items);
   },
   getAllCollectors: () => allCollectors,
   setAllCollectors: (collectors) => {
@@ -380,7 +390,7 @@ attachSelectionHandlers({
   selectedIds,
   getAllItems: () => allItems,
   setAllItems: (items) => {
-    allItems = items;
+    setAllItemsState(items);
   },
   getAllCollectors: () => allCollectors,
   setAllCollectors: (collectors) => {
