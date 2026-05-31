@@ -32,7 +32,7 @@ package-lock.json
 yarn.lock
 
 # Browser extension specifics
-text-collector/node_modules/
+extension/node_modules/
 
 # Docs: ignore plan file
 docs/TEXT_COLLECTOR_PLAN.md
