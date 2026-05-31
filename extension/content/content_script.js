@@ -171,7 +171,7 @@
         cursor: not-allowed;
       }
       .tc-highlight {
-        background: #d9a441;
+        background: #f1f0ee;
         color: inherit;
         border-radius: 3px;
         padding: 0 1px;

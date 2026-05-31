@@ -156,7 +156,7 @@ body {
     appearance: checkbox;
     -webkit-appearance: checkbox;
     -moz-appearance: checkbox;
-    accent-color: #d9a441;
+    accent-color: #f1f0ee;
     background: transparent;
     border-radius: 4px;
     border: none;
@@ -298,7 +298,7 @@ button {
 }
 
 .collector-input:focus {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 
@@ -310,14 +310,14 @@ button {
 }
 
 .collector-select-bar .outline-button.active {
-    border-color: #d9a441;
-    box-shadow: 0 0 0 1px #d9a441 inset;
+    border-color: #f1f0ee;
+    box-shadow: 0 0 0 1px #f1f0ee inset;
     color: #f1f0ee;
 }
 
 .collector-select-bar .icon-action.active {
-    border-color: #d9a441;
-    box-shadow: 0 0 0 1px #d9a441 inset;
+    border-color: #f1f0ee;
+    box-shadow: 0 0 0 1px #f1f0ee inset;
     color: #f1f0ee;
 }
 
@@ -560,7 +560,7 @@ margin-bottom: 12px;
     border-radius: 999px;
     transform: scale(0);
     transition: transform 0.12s ease;
-    background: #d9a441;
+    background: #f1f0ee;
 }
 
 .collector-select:checked::before {
@@ -572,7 +572,7 @@ margin-bottom: 12px;
 }
 
 .collector-card:focus-visible {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 
@@ -646,7 +646,7 @@ margin-bottom: 12px;
 }
 
 .collector-name-input:focus {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 
@@ -708,7 +708,7 @@ margin-bottom: 12px;
     border-radius: 4px;
     transform: scale(0);
     transition: transform 0.12s ease;
-    background: #d9a441;
+    background: #f1f0ee;
 }
 
 .select-all input:checked::before,
@@ -849,6 +849,29 @@ margin-bottom: 12px;
     padding: 6px 12px;
 }
 
+#bulk-move-select {
+    appearance: none;
+    background: #2f2d2a;
+    color: #f1f0ee;
+    border: 1px solid #4a4845;
+    border-radius: 8px;
+    padding: 8px 32px 8px 12px;
+    min-height: 36px;
+    font-size: 13px;
+}
+
+#bulk-move-select:focus {
+    outline: 2px solid #f1f0ee;
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    #bulk-move-select:hover {
+        background: #383634;
+        border-color: #5a5753;
+    }
+}
+
 .item-action.icon-only {
     padding: 8px;
     width: 36px;
@@ -856,7 +879,7 @@ margin-bottom: 12px;
 }
 
 .text-highlight {
-    background: rgba(217, 164, 65, 0.25);
+    background: rgba(241, 240, 238, 0.25);
     color: #f1f0ee;
     border-radius: 4px;
     padding: 0 2px;
@@ -1053,7 +1076,7 @@ margin-bottom: 12px;
 }
 
 .settings-input:focus {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 
@@ -1068,8 +1091,8 @@ margin-bottom: 12px;
 }
 
 .log-filter.active {
-    border-color: #d9a441;
-    box-shadow: 0 0 0 1px #d9a441 inset;
+    border-color: #f1f0ee;
+    box-shadow: 0 0 0 1px #f1f0ee inset;
 }
 
 .log-list {
@@ -1110,7 +1133,7 @@ margin-bottom: 12px;
 }
 
 .edit-input:focus {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 
@@ -1136,14 +1159,14 @@ margin-bottom: 12px;
 }
 
 .collector-pill.is-selected {
-    border-color: #d9a441;
+    border-color: #f1f0ee;
     background: #3a3325;
     color: #f1f0ee;
-    box-shadow: 0 0 0 1px #d9a441 inset;
+    box-shadow: 0 0 0 1px #f1f0ee inset;
 }
 
 .collector-pill:focus-visible {
-    outline: 2px solid #d9a441;
+    outline: 2px solid #f1f0ee;
     outline-offset: 2px;
 }
 

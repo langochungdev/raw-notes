@@ -32,11 +32,11 @@ export const renderCollectors = (
     swatchButton.className = "collector-color-button";
     const swatch = document.createElement("span");
     swatch.className = "collector-color";
-    swatch.style.background = collector.color || "#d9a441";
+    swatch.style.background = collector.color || "#f1f0ee";
     const colorInput = document.createElement("input");
     colorInput.type = "color";
     colorInput.className = "collector-color-input";
-    colorInput.value = collector.color || "#d9a441";
+    colorInput.value = collector.color || "#f1f0ee";
     colorInput.addEventListener("input", (event) => {
       const value = event.target?.value || "";
       if (value) {
