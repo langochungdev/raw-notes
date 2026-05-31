@@ -35,7 +35,8 @@
   let highlightClickTimer = null;
   const SETTINGS_KEY = "tc_settings";
   const DEFAULT_SETTINGS = {
-    sidebarOpenMode: "float"
+    sidebarOpenMode: "float",
+    defaultCollectorColor: "#00eeff"
   };
   let settingsState = { ...DEFAULT_SETTINGS };
   let resolveSource = () => ({

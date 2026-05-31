@@ -68,7 +68,7 @@ export const createEditModal = ({
       button.type = "button";
       button.className = "collector-pill";
       button.textContent = collector.name;
-      const collectorColor = collector.color || "#f1f0ee";
+      const collectorColor = collector.color || "#00eeff";
       button.style.setProperty("--collector-color", collectorColor);
       button.setAttribute("role", "option");
       const isSelected = selectedCollectorIds.has(collector.id);

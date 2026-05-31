@@ -175,7 +175,7 @@ export class StorageService {
       id: raw?.id || crypto.randomUUID(),
       name: String(raw?.name || "Collector"),
       description: raw?.description || "",
-      color: raw?.color || "#d97706",
+      color: raw?.color || "#00eeff",
       createdAt: raw?.createdAt || now,
       updatedAt: raw?.updatedAt || now,
       itemCount: Number.isFinite(raw?.itemCount) ? raw.itemCount : 0,
@@ -462,11 +462,15 @@ export class StorageService {
 
   async createCollector(data) {
     const collectors = await this.getCollectors();
+    const stored = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
+    const settings = stored[STORAGE_KEYS.SETTINGS] || {};
+    const defaultColor = settings.defaultCollectorColor || "#00eeff";
+
     const collector = {
       id: crypto.randomUUID(),
       name: data.name,
       description: data.description || "",
-      color: data.color || "#d97706",
+      color: data.color || defaultColor,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       itemCount: 0,

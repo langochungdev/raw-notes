@@ -182,7 +182,7 @@ export const createItemManager = ({
         const collectorId = Array.isArray(item.collectorIds) && item.collectorIds.length > 0 ? item.collectorIds[0] : item.collectorId;
         const collectors = getAllCollectors?.() || [];
         const collector = collectors.find((c) => c.id === collectorId);
-        const color = collector?.color || "#f1f0ee";
+        const color = collector?.color || "#00eeff";
         chrome.runtime.sendMessage({ type: "OPEN_ITEM_SOURCE", item, color }).catch(() => {
           window.open(item.source.url, "_blank");
         });

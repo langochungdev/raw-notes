@@ -33,6 +33,7 @@ const collectorDeleteSelected = document.getElementById("collector-delete-select
 const pickFolderButton = document.getElementById("pick-folder");
 const settingsModal = document.getElementById("settings-modal");
 const settingsPickCollectors = document.getElementById("settings-pick-collectors");
+const settingsDefaultColor = document.getElementById("settings-default-color");
 const settingsGlobalShortcutButton = document.getElementById("settings-global-shortcut");
 const settingsModeInputs = Array.from(
   document.querySelectorAll("input[name=\"sidebar-open-mode\"]")
@@ -122,7 +123,8 @@ let isSearchCollectorOpen = false;
 let reloadAllData = async () => {};
 const DEFAULT_SETTINGS = {
   sidebarOpenMode: "float",
-  collectorFolderLabel: ""
+  collectorFolderLabel: "",
+  defaultCollectorColor: "#00eeff"
 };
 let settingsState = { ...DEFAULT_SETTINGS };
 
@@ -287,6 +289,9 @@ const updateSettingsUI = async (options = {}) => {
     } else {
       settingsPickCollectors.textContent = "Thêm thư mục";
     }
+  }
+  if (settingsDefaultColor) {
+    settingsDefaultColor.value = settingsState.defaultCollectorColor || "#00eeff";
   }
 };
 
@@ -509,6 +514,12 @@ settingsModeInputs.forEach((input) => {
   });
 });
 
+settingsDefaultColor?.addEventListener("change", async (event) => {
+  if (!event.target?.value) return;
+  await writeSettings({ defaultCollectorColor: event.target.value });
+  showNotice(document, "Saved");
+});
+
 settingsGlobalShortcutButton?.addEventListener("click", () => {
   // Edge detects edge://, Chrome detects chrome://. chrome:// works in Edge extensions too.
   chrome.tabs.create({ url: "chrome://extensions/shortcuts" }).catch(() => {
@@ -549,7 +560,7 @@ document.addEventListener("pointerdown", (event) => {
   }
   
   if (isCollectorSelectMode) {
-    const isCollectorAction = event.target.closest('.collector-item');
+    const isCollectorAction = event.target.closest('.collector-card');
     const isToggleAction = collectorSelectToggle.contains(event.target);
     const isDeleteSelectedAction = collectorDeleteSelected.contains(event.target);
     const isExportAction = exportButton.contains(event.target) || (exportMenu && exportMenu.contains(event.target));
