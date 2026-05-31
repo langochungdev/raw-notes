@@ -288,11 +288,16 @@
 
   const positionPanel = (rect) => {
     if (!panel) return;
-    const offset = 6;
-    const top = Math.max(8, rect.top + window.scrollY - offset - 40);
+    const offset = 8;
+    const panelRect = panel.getBoundingClientRect();
+    const panelHeight = panelRect.height || 0;
+    const panelWidth = panelRect.width || 320;
+    const aboveTop = rect.top + window.scrollY - offset - panelHeight;
+    const belowTop = rect.bottom + window.scrollY + offset;
+    const top = aboveTop >= 8 ? aboveTop : belowTop;
     const left = Math.max(
       8,
-      Math.min(rect.left + window.scrollX, window.innerWidth - 320)
+      Math.min(rect.left + window.scrollX, window.innerWidth - panelWidth - 8)
     );
     panel.style.top = `${top}px`;
     panel.style.left = `${left}px`;
@@ -337,8 +342,10 @@
     if (!panel) return;
     if (!lastRect) return;
     panel.style.display = "block";
-    positionPanel(lastRect);
     await updateCollectors();
+    requestAnimationFrame(() => {
+      positionPanel(lastRect);
+    });
   };
 
   const closePanel = () => {
