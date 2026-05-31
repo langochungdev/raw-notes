@@ -26,7 +26,7 @@ export const attachManualEntry = ({
       activeCollectorId: getActiveCollectorId()
     });
     if (!payload) return;
-    const { text, note, tags, collectorId } = payload;
+    const { text, note, collectorId } = payload;
     if (!collectorId) {
       showNotice(doc, "Select a collector");
       return;
@@ -42,7 +42,6 @@ export const attachManualEntry = ({
       collectorIds: [collectorId],
       text,
       note,
-      tags,
       source: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -60,7 +59,6 @@ export const attachManualEntry = ({
         collectorIds: [collectorId],
         text,
         note,
-        tags,
         source: null
       });
       if (reloadItems) {

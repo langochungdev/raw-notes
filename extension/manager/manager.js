@@ -67,7 +67,6 @@ const editSaveButton = document.getElementById("save-edit");
 const editCancelButton = document.getElementById("cancel-edit");
 const editText = document.getElementById("edit-text");
 const editNote = document.getElementById("edit-note");
-const editTags = document.getElementById("edit-tags");
 const editError = document.getElementById("edit-error");
 const miniSearchStatus = document.getElementById("minisearch-status");
 const noFolderState = document.getElementById("no-folder-state");
@@ -294,7 +293,6 @@ const editModalManager = createEditModal({
   cancelButton: editCancelButton,
   textInput: editText,
   noteInput: editNote,
-  tagsInput: editTags,
   collectorRow: editCollectorRow,
   collectorSelect: editCollector,
   titleEl: editTitle,

@@ -242,7 +242,16 @@ export const renderItems = (
     const terms = matchesById?.get(item.id) || [];
     const text = document.createElement("div");
     text.className = "item-text";
-    renderHighlightedText(text, item.text || "", terms);
+    const textSpan = document.createElement("span");
+    textSpan.className = "item-text-copy";
+    renderHighlightedText(textSpan, item.text || "", terms);
+    if (actions?.onCopyText) {
+      textSpan.addEventListener("click", (event) => {
+        event.stopPropagation();
+        actions.onCopyText(item);
+      });
+    }
+    text.appendChild(textSpan);
     content.appendChild(text);
     if (item.note) {
       const note = document.createElement("div");
@@ -267,17 +276,6 @@ export const renderItems = (
     time.textContent = formatRelativeTime(item.updatedAt || item.createdAt);
     meta.appendChild(source);
     meta.appendChild(time);
-    if (item.tags && item.tags.length > 0) {
-      const tags = document.createElement("div");
-      tags.className = "item-tags";
-      item.tags.forEach((tag) => {
-        const pill = document.createElement("span");
-        pill.className = "item-tag";
-        pill.textContent = tag;
-        tags.appendChild(pill);
-      });
-      meta.appendChild(tags);
-    }
     if (item.shareUrl) {
       const shareRow = document.createElement("div");
       shareRow.className = "item-share";
@@ -306,19 +304,19 @@ export const renderItems = (
       content.appendChild(shareRow);
     }
     content.appendChild(meta);
+    if (actions?.onEdit) {
+      content.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target.closest(".item-text-copy")) return;
+        if (target.closest("a, button, select, input")) return;
+        actions.onEdit(item);
+      });
+    }
     card.appendChild(select);
     card.appendChild(content);
-    if (actions?.onEdit || actions?.onCopyText || actions?.onDelete) {
+    if (actions?.onDelete || actions?.onAddCollector) {
       const actionRow = document.createElement("div");
       actionRow.className = "item-actions";
-      if (actions?.onCopyText) {
-        const copyButton = document.createElement("button");
-        copyButton.type = "button";
-        copyButton.className = "item-action";
-        copyButton.textContent = "Copy";
-        copyButton.addEventListener("click", () => actions.onCopyText(item));
-        actionRow.appendChild(copyButton);
-      }
       if (actions?.onAddCollector && actions?.getCollectors) {
         const moveSelect = document.createElement("select");
         moveSelect.className = "item-action item-move-select";
@@ -348,12 +346,6 @@ export const renderItems = (
         });
         actionRow.appendChild(moveSelect);
       }
-      const editButton = document.createElement("button");
-      editButton.type = "button";
-      editButton.className = "item-action";
-      editButton.textContent = "Edit";
-      editButton.addEventListener("click", () => actions.onEdit(item));
-      actionRow.appendChild(editButton);
       if (actions?.onDelete) {
         const deleteButton = document.createElement("button");
         deleteButton.type = "button";

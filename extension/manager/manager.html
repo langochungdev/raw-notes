@@ -67,7 +67,14 @@
                     </button>
                 </div>
                 <div class="collector-select-bar">
-                    <button id="collector-select-toggle" type="button" class="outline-button">Select</button>
+                    <button id="collector-select-toggle" type="button" class="icon-action" title="Edit collectors" aria-label="Edit collectors">
+                        <span class="button-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M4 17.5V20h2.5L17.7 8.8l-2.5-2.5L4 17.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M13.8 5.2l2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                    </button>
                     <label class="select-all collector-select-all hidden">
                         <input id="collector-select-all" type="checkbox" aria-label="Select all collectors" />
                     </label>
@@ -221,10 +228,6 @@
                 <div class="edit-row">
                     <label class="edit-label" for="edit-note">Note</label>
                     <textarea id="edit-note" class="edit-input" rows="3"></textarea>
-                </div>
-                <div class="edit-row">
-                    <label class="edit-label" for="edit-tags">Tags</label>
-                    <input id="edit-tags" class="edit-input" type="text" placeholder="tag1, tag2" />
                 </div>
                 <div class="edit-row" id="edit-collector-row">
                     <label class="edit-label" for="edit-collector">Collector</label>

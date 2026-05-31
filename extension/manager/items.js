@@ -38,7 +38,7 @@ export const createItemManager = ({
   const handleItemEdit = async (item) => {
     const nextValues = await openEditModal(item);
     if (!nextValues) return;
-    const { text, note, tags } = nextValues;
+    const { text, note } = nextValues;
     const snapshot = [...getAllItems()];
     const updatedItems = getAllItems().map((entry) =>
       entry.id === item.id
@@ -46,7 +46,6 @@ export const createItemManager = ({
             ...entry,
             text,
             note,
-            tags,
             updatedAt: new Date().toISOString()
           }
         : entry
@@ -55,7 +54,7 @@ export const createItemManager = ({
     await searchService.index(updatedItems);
     refreshItems();
     try {
-      await storage.updateItem(item.id, { text, note, tags });
+      await storage.updateItem(item.id, { text, note });
       await reloadItems?.();
     } catch (error) {
       setAllItems(snapshot);
@@ -79,7 +78,6 @@ export const createItemManager = ({
       collectorIds: [collectorId],
       text: item.text || "",
       note: item.note || "",
-      tags: Array.isArray(item.tags) ? item.tags : [],
       source: item.source || null,
       createdAt: now,
       updatedAt: now,
@@ -100,7 +98,6 @@ export const createItemManager = ({
         collectorIds: [collectorId],
         text: optimisticItem.text,
         note: optimisticItem.note,
-        tags: optimisticItem.tags,
         source: optimisticItem.source
       });
       if (reloadItems) {

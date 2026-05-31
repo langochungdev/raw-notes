@@ -4,7 +4,6 @@ export const createEditModal = ({
   cancelButton,
   textInput,
   noteInput,
-  tagsInput,
   collectorRow,
   collectorSelect,
   titleEl,
@@ -48,7 +47,6 @@ export const createEditModal = ({
     }
     textInput.value = item.text || "";
     noteInput.value = item.note || "";
-    tagsInput.value = (item.tags || []).join(", ");
     setError("");
     modal.classList.remove("hidden");
     textInput.focus();
@@ -81,7 +79,6 @@ export const createEditModal = ({
     }
     textInput.value = "";
     noteInput.value = "";
-    tagsInput.value = "";
     setError("");
     modal.classList.remove("hidden");
     textInput.focus();
@@ -97,19 +94,14 @@ export const createEditModal = ({
       return null;
     }
     const note = noteInput.value.trim();
-    const tags = tagsInput.value
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
     if (mode === "create" && collectorSelect) {
       return {
         text,
         note,
-        tags,
         collectorId: collectorSelect.value || null
       };
     }
-    return { text, note, tags };
+    return { text, note };
   };
 
   saveButton.addEventListener("click", () => {

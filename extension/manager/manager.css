@@ -315,6 +315,12 @@ button {
     color: #f1f0ee;
 }
 
+.collector-select-bar .icon-action.active {
+    border-color: #d9a441;
+    box-shadow: 0 0 0 1px #d9a441 inset;
+    color: #f1f0ee;
+}
+
 .sidebar-group-title {
     margin: 8px 0 10px;
     font-size: 10px;
@@ -731,6 +737,10 @@ margin-bottom: 12px;
 .item-text {
     font-size: 1.05rem;
     line-height: 1.6;
+}
+
+.item-text-copy {
+    display: inline;
 }
 
 .item-note {
