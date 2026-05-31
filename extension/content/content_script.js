@@ -160,11 +160,15 @@
       .tc-collector {
         border: 1px solid #2a2a2a;
         background: #000;
-        color: #f5f5f5;
+        color: var(--collector-color, #f5f5f5);
         padding: 6px 10px;
         border-radius: 10px;
         font: 600 12px/1.2 Arial, sans-serif;
         cursor: pointer;
+      }
+      .tc-collector::selection {
+        background: var(--collector-color, #f1f0ee);
+        color: #000;
       }
       .tc-collector:disabled {
         opacity: 0.6;
@@ -643,7 +647,7 @@
       itemCache = new Map(items.map((item) => [item.id, item]));
       const collectors = collectorsResponse?.collectors || [];
       collectorColorCache = new Map(
-        collectors.map((collector) => [collector.id, collector.color || "#d97706"])
+        collectors.map((collector) => [collector.id, collector.color || "#f1f0ee"])
       );
       const relevant = items.filter((item) => {
         if (!item?.source?.url || item.source.url !== currentUrl) return false;
@@ -653,7 +657,7 @@
       });
       relevant.forEach((item) => {
         if (hasHighlightForItem(item.id)) return;
-        const color = collectorColorCache.get(item.collectorId) || "#d97706";
+        const color = collectorColorCache.get(item.collectorId) || "#f1f0ee";
         const ok = highlightFromLocation(item, item.location, color);
         if (!ok) {
           const range = findRangeByContext(item, item.location);
@@ -877,6 +881,7 @@
       pickButton.type = "button";
       pickButton.className = "tc-collector";
       pickButton.textContent = "Chọn thư mục";
+      pickButton.style.setProperty("--collector-color", "#f1f0ee");
       pickButton.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -889,7 +894,7 @@
     const response = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
     const collectors = response?.collectors || [];
     collectorColorCache = new Map(
-      collectors.map((collector) => [collector.id, collector.color || "#d97706"])
+      collectors.map((collector) => [collector.id, collector.color || "#f1f0ee"])
     );
     collectorButtons.innerHTML = "";
     collectors.forEach((collector) => {
@@ -897,6 +902,7 @@
       button.type = "button";
       button.className = "tc-collector";
       button.textContent = collector.name || "Collector";
+      button.style.setProperty("--collector-color", collector.color || "#f1f0ee");
       button.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
