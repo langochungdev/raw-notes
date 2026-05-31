@@ -195,7 +195,7 @@
       }
       .tc-highlight {
         background: #f1f0ee;
-        color: inherit;
+        color: #000 !important;
         border-radius: 3px;
         padding: 0 1px;
         cursor: pointer;
@@ -495,6 +495,7 @@
     if (color) {
       span.style.backgroundColor = color;
     }
+    span.style.color = "#000";
     return span;
   };
 
