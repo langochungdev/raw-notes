@@ -319,6 +319,10 @@ export const updateSelectionState = (
   const total = currentResults.length;
   const selected = currentResults.filter((item) => selectedIds.has(item.id))
     .length;
+  const selectAllLabel = selectAllInput?.closest(".select-all");
+  if (selectAllLabel) {
+    selectAllLabel.classList.toggle("hidden", total < 2);
+  }
   selectAllInput.indeterminate = selected > 0 && selected < total;
   selectAllInput.checked = total > 0 && selected === total;
   deleteSelectedButton.disabled = selectedIds.size === 0;

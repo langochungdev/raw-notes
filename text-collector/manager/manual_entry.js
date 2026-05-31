@@ -11,6 +11,7 @@ export const attachManualEntry = ({
   recalcCollectorCounts,
   renderCollectors,
   refreshItems,
+  reloadItems,
   showNotice,
   doc
 }) => {
@@ -60,6 +61,10 @@ export const attachManualEntry = ({
         tags,
         source: null
       });
+      if (reloadItems) {
+        await reloadItems();
+        return;
+      }
       const updatedItems = getAllItems()
         .filter((item) => item.id !== tempId)
         .concat(saved);

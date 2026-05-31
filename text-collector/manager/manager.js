@@ -28,6 +28,7 @@ const newCollectorButton = document.getElementById("new-collector");
 const newCollectorNameInput = document.getElementById("new-collector-name");
 const collectorSelectToggle = document.getElementById("collector-select-toggle");
 const collectorDeleteSelected = document.getElementById("collector-delete-selected");
+const collectorSelectAllInput = document.getElementById("collector-select-all");
 const pickFolderButton = document.getElementById("pick-folder");
 const settingsModal = document.getElementById("settings-modal");
 const settingsCloseButton = document.getElementById("settings-close");
@@ -90,6 +91,26 @@ const DEFAULT_SETTINGS = {
   collectorFolderLabel: ""
 };
 let settingsState = { ...DEFAULT_SETTINGS };
+
+const updateCollectorSelectAllState = () => {
+  if (!collectorSelectAllInput) return;
+  const label = collectorSelectAllInput.closest(".select-all");
+  if (label) {
+    label.classList.toggle(
+      "hidden",
+      !isCollectorSelectMode || allCollectors.length < 2
+    );
+  }
+  if (!isCollectorSelectMode) {
+    collectorSelectAllInput.checked = false;
+    collectorSelectAllInput.indeterminate = false;
+    return;
+  }
+  const total = allCollectors.length;
+  const selected = allCollectors.filter((c) => selectedCollectorIds.has(c.id)).length;
+  collectorSelectAllInput.indeterminate = selected > 0 && selected < total;
+  collectorSelectAllInput.checked = total > 0 && selected === total;
+};
 
 const readSettings = async () => {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
@@ -323,6 +344,7 @@ const collectorManager = createCollectorManager({
       "hidden",
       selectedCollectorIds.size === 0
     );
+    updateCollectorSelectAllState();
     collectorManager.renderCollectorList();
   },
   getActiveCollectorId: () => activeCollectorId,
@@ -335,6 +357,7 @@ const collectorManager = createCollectorManager({
     allCollectors = collectors;
     updateSearchPlaceholder();
     updateSearchCollectorOptions();
+    updateCollectorSelectAllState();
   },
   loadItems: itemManager.loadItems,
   onActiveCollectorChange: () => updateSearchPlaceholder()
@@ -481,6 +504,22 @@ collectorSelectToggle.addEventListener("click", () => {
     selectedCollectorIds.clear();
     collectorDeleteSelected.classList.add("hidden");
   }
+  updateCollectorSelectAllState();
+  collectorManager.renderCollectorList();
+});
+
+collectorSelectAllInput?.addEventListener("change", () => {
+  if (!isCollectorSelectMode) return;
+  if (collectorSelectAllInput.checked) {
+    allCollectors.forEach((collector) => selectedCollectorIds.add(collector.id));
+  } else {
+    selectedCollectorIds.clear();
+  }
+  collectorDeleteSelected.classList.toggle(
+    "hidden",
+    selectedCollectorIds.size === 0
+  );
+  updateCollectorSelectAllState();
   collectorManager.renderCollectorList();
 });
 
@@ -532,6 +571,7 @@ attachManualEntry({
     collectorManager.renderCollectorList();
   },
   refreshItems: itemManager.refreshItems,
+  reloadItems: itemManager.loadItems,
   showNotice,
   doc: document
 });
