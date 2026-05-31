@@ -220,10 +220,16 @@ export class StorageService {
     const collectorIdSet = new Set();
     const itemIdSet = new Set();
 
+    const entries = [];
     for await (const [name, entry] of handle.entries()) {
       if (entry.kind !== "file" || !name.toLowerCase().endsWith(".json")) {
         continue;
       }
+      entries.push([name, entry]);
+    }
+    entries.sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }));
+
+    for (const [name, entry] of entries) {
       let data = null;
       try {
         data = await this.readJsonFileFromHandle(entry);
