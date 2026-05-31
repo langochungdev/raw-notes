@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "./constants.js";
+import { SCHEMA_VERSION, STORAGE_KEYS } from "./constants.js";
 
 const DB_NAME = "textcollector-db";
 const DB_VERSION = 1;
@@ -62,6 +62,27 @@ const summarizeHandle = (handle) => ({
   kind: handle?.kind || "",
   name: handle?.name || ""
 });
+
+const normalizeCollectorBase = (name) => {
+  const base = String(name || "").trim().toLowerCase();
+  const sanitized = base
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return sanitized || "collector";
+};
+
+const buildCollectorToken = (id) => {
+  const cleaned = String(id || "").replace(/[^a-zA-Z0-9]/g, "");
+  if (cleaned.length >= 8) return cleaned.slice(0, 8).toLowerCase();
+  if (cleaned.length > 0) return cleaned.toLowerCase();
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+};
+
+const buildCollectorFileName = (collector) => {
+  const base = normalizeCollectorBase(collector?.name);
+  const token = buildCollectorToken(collector?.id);
+  return `${base}_rn${token}.json`;
+};
 
 
 const SHARE_ENDPOINTS = {
@@ -144,6 +165,236 @@ export class StorageService {
     this.logger = logger;
   }
 
+  getCollectorFileName(collector) {
+    return collector?.fileName || buildCollectorFileName(collector);
+  }
+
+  normalizeCollectorData(raw) {
+    const now = new Date().toISOString();
+    return {
+      id: raw?.id || crypto.randomUUID(),
+      name: String(raw?.name || "Collector"),
+      description: raw?.description || "",
+      color: raw?.color || "#d97706",
+      createdAt: raw?.createdAt || now,
+      updatedAt: raw?.updatedAt || now,
+      itemCount: Number.isFinite(raw?.itemCount) ? raw.itemCount : 0,
+      fileName: raw?.fileName || ""
+    };
+  }
+
+  normalizeItemData(raw, collectorId) {
+    const now = new Date().toISOString();
+    return {
+      id: raw?.id || crypto.randomUUID(),
+      collectorId,
+      text: raw?.text || "",
+      note: raw?.note || "",
+      tags: Array.isArray(raw?.tags) ? raw.tags : [],
+      source: raw?.source || null,
+      createdAt: raw?.createdAt || now,
+      updatedAt: raw?.updatedAt || now,
+      shareUrl: raw?.shareUrl ?? null,
+      shareEditCode: raw?.shareEditCode ?? null
+    };
+  }
+
+  async readJsonFileFromHandle(fileHandle) {
+    const file = await fileHandle.getFile();
+    const content = await file.text();
+    return JSON.parse(content);
+  }
+
+  async tryReadJsonFile(dirHandle, fileName) {
+    try {
+      const fileHandle = await dirHandle.getFileHandle(fileName);
+      return await this.readJsonFileFromHandle(fileHandle);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async readCollectorFilesFromDirectory(handle) {
+    const collectors = [];
+    const items = [];
+    const collectorIdSet = new Set();
+    const itemIdSet = new Set();
+
+    for await (const [name, entry] of handle.entries()) {
+      if (entry.kind !== "file" || !name.toLowerCase().endsWith(".json")) {
+        continue;
+      }
+      let data = null;
+      try {
+        data = await this.readJsonFileFromHandle(entry);
+      } catch (error) {
+        if (this.logger) {
+          await this.logger.log("WARN", "fs", "Failed to read collector file", {
+            name,
+            message: error.message || "read failed"
+          });
+        }
+        continue;
+      }
+
+      const collectorData = data?.collector || null;
+      if (!collectorData) {
+        continue;
+      }
+
+      let collector = this.normalizeCollectorData({
+        ...collectorData,
+        fileName: collectorData?.fileName || name
+      });
+      if (collectorIdSet.has(collector.id)) {
+        collector = this.normalizeCollectorData({
+          ...collector,
+          id: crypto.randomUUID(),
+          fileName: ""
+        });
+      }
+      collectorIdSet.add(collector.id);
+
+      const fileItems = Array.isArray(data?.items) ? data.items : [];
+      const normalizedItems = fileItems.map((item) => {
+        let next = this.normalizeItemData(item, collector.id);
+        if (itemIdSet.has(next.id)) {
+          next = this.normalizeItemData({
+            ...next,
+            id: crypto.randomUUID()
+          }, collector.id);
+        }
+        itemIdSet.add(next.id);
+        return next;
+      });
+
+      collector.itemCount = normalizedItems.length;
+      collectors.push(collector);
+      items.push(...normalizedItems);
+    }
+
+    return { collectors, items };
+  }
+
+  async readLegacyCollectorsFromDirectory(handle) {
+    const collectorsData = await this.tryReadJsonFile(handle, "collectors.json");
+    if (!Array.isArray(collectorsData) || collectorsData.length === 0) {
+      return { collectors: [], items: [], migrated: false };
+    }
+
+    const collectors = [];
+    const items = [];
+    const collectorIdSet = new Set();
+    const itemIdSet = new Set();
+
+    for (const rawCollector of collectorsData) {
+      let collector = this.normalizeCollectorData(rawCollector);
+      collector.fileName = buildCollectorFileName(collector);
+      if (collectorIdSet.has(collector.id)) {
+        collector = this.normalizeCollectorData({
+          ...collector,
+          id: crypto.randomUUID()
+        });
+      }
+      collectorIdSet.add(collector.id);
+      let collectorItems = [];
+      try {
+        const collectorDir = await handle.getDirectoryHandle(collector.name);
+        const itemsData = await this.tryReadJsonFile(collectorDir, "items.json");
+        collectorItems = Array.isArray(itemsData) ? itemsData : [];
+      } catch (error) {
+        collectorItems = [];
+      }
+
+      const normalizedItems = collectorItems.map((item) => {
+        let next = this.normalizeItemData(item, collector.id);
+        if (itemIdSet.has(next.id)) {
+          next = this.normalizeItemData({
+            ...next,
+            id: crypto.randomUUID()
+          }, collector.id);
+        }
+        itemIdSet.add(next.id);
+        return next;
+      });
+
+      collector.itemCount = normalizedItems.length;
+      collectors.push(collector);
+      items.push(...normalizedItems);
+    }
+
+    return { collectors, items, migrated: true };
+  }
+
+  async loadCollectorsFromDisk() {
+    const handle = await this.restoreCollectorDirectory();
+    if (!handle) {
+      return { loaded: false, collectors: [], items: [] };
+    }
+
+    let { collectors, items } = await this.readCollectorFilesFromDirectory(handle);
+    let migratedLegacy = false;
+
+    if (collectors.length === 0) {
+      const legacy = await this.readLegacyCollectorsFromDirectory(handle);
+      collectors = legacy.collectors;
+      items = legacy.items;
+      migratedLegacy = legacy.migrated;
+    }
+
+    if (collectors.length === 0) {
+      const fallback = this.normalizeCollectorData({ name: "Default" });
+      fallback.fileName = buildCollectorFileName(fallback);
+      collectors = [fallback];
+      items = [];
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.COLLECTORS]: collectors,
+        [STORAGE_KEYS.ITEMS]: items
+      });
+      await this.writeCollectorFileToDisk(fallback, [], handle);
+      return { loaded: true, collectors, items, migratedLegacy };
+    }
+
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.COLLECTORS]: collectors,
+      [STORAGE_KEYS.ITEMS]: items
+    });
+
+    if (migratedLegacy) {
+      await this.writeAllCollectorsToDisk();
+    }
+
+    return { loaded: true, collectors, items, migratedLegacy };
+  }
+
+  async writeCollectorFileToDisk(collector, items, dirHandle = null) {
+    const handle = dirHandle || (await this.restoreCollectorDirectory());
+    if (!handle) return;
+    const fileName = this.getCollectorFileName(collector);
+    await this.writeJsonFile(handle, fileName, {
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      collector,
+      items
+    });
+  }
+
+  async removeCollectorFileFromDisk(collector, dirHandle = null) {
+    const handle = dirHandle || (await this.restoreCollectorDirectory());
+    if (!handle) return;
+    const fileName = this.getCollectorFileName(collector);
+    try {
+      await handle.removeEntry(fileName);
+    } catch (error) {
+      if (this.logger) {
+        await this.logger.log("WARN", "fs", "Failed to remove collector file", {
+          fileName,
+          message: error.message || "removeEntry failed"
+        });
+      }
+    }
+  }
+
   async getCollectors() {
     const stored = await chrome.storage.local.get(STORAGE_KEYS.COLLECTORS);
     return stored[STORAGE_KEYS.COLLECTORS] || [];
@@ -163,27 +414,48 @@ export class StorageService {
       color: data.color || "#d97706",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      itemCount: 0
+      itemCount: 0,
+      fileName: ""
     };
+    collector.fileName = this.getCollectorFileName(collector);
     collectors.push(collector);
     await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTORS]: collectors });
-    await this.writeAllCollectorsToDisk();
+    await this.writeCollectorFileToDisk(collector, []);
     return collector;
   }
 
   async updateCollector(id, updates) {
     const collectors = await this.getCollectors();
+    const current = collectors.find((collector) => collector.id === id) || null;
     const next = collectors.map((collector) => {
       if (collector.id !== id) return collector;
-      return {
+      const nextCollector = {
         ...collector,
         ...updates,
         updatedAt: new Date().toISOString()
       };
+      if (updates?.name && updates.name !== collector.name) {
+        nextCollector.fileName = buildCollectorFileName(nextCollector);
+      }
+      return nextCollector;
     });
     await chrome.storage.local.set({ [STORAGE_KEYS.COLLECTORS]: next });
-    await this.writeAllCollectorsToDisk();
-    return next.find((collector) => collector.id === id) || null;
+    const updated = next.find((collector) => collector.id === id) || null;
+    const items = await this.getItems();
+    if (updated) {
+      await this.writeCollectorFileToDisk(
+        updated,
+        items.filter((item) => item.collectorId === updated.id)
+      );
+    }
+    if (current && updates?.name && current.name !== updates.name) {
+      const previousFile = this.getCollectorFileName(current);
+      const nextFile = updated ? this.getCollectorFileName(updated) : previousFile;
+      if (previousFile !== nextFile) {
+        await this.removeCollectorFileFromDisk(current);
+      }
+    }
+    return updated;
   }
 
   async deleteCollector(id) {
@@ -197,18 +469,8 @@ export class StorageService {
       [STORAGE_KEYS.ITEMS]: nextItems
     });
     await this.writeAllCollectorsToDisk();
-    const handle = await this.restoreCollectorDirectory();
-    if (handle && target) {
-      try {
-        await handle.removeEntry(target.name, { recursive: true });
-      } catch (error) {
-        if (this.logger) {
-          await this.logger.log("WARN", "fs", "Failed to remove folder", {
-            name: target.name,
-            message: error.message || "removeEntry failed"
-          });
-        }
-      }
+    if (target) {
+      await this.removeCollectorFileFromDisk(target);
     }
     return true;
   }
@@ -242,7 +504,10 @@ export class StorageService {
       [STORAGE_KEYS.ITEMS]: items,
       [STORAGE_KEYS.COLLECTORS]: nextCollectors
     });
-    await this.writeCollectorItemsToDisk(collector, items);
+    await this.writeCollectorFileToDisk(
+      nextCollectors.find((entry) => entry.id === collector.id) || collector,
+      items.filter((entry) => entry.collectorId === collector.id)
+    );
     return nextItem;
   }
 
@@ -264,7 +529,10 @@ export class StorageService {
       (entry) => entry.id === updatedItem.collectorId
     );
     if (collector) {
-      await this.writeCollectorItemsToDisk(collector, items);
+      await this.writeCollectorFileToDisk(
+        collector,
+        items.filter((entry) => entry.collectorId === collector.id)
+      );
     }
     return updatedItem;
   }
@@ -626,9 +894,6 @@ export class StorageService {
       [STORAGE_KEYS.ITEMS]: nextItems
     });
     await this.writeAllCollectorsToDisk();
-    for (const collector of nextCollectors) {
-      await this.writeCollectorItemsToDisk(collector, nextItems, false);
-    }
     return { collectors: nextCollectors, items: nextItems };
   }
 
@@ -730,10 +995,13 @@ export class StorageService {
     if (!handle) return;
     try {
       const collectors = await this.getCollectors();
-      await this.writeJsonFile(handle, "schema.json", {
-        schemaVersion: 3
-      });
-      await this.writeJsonFile(handle, "collectors.json", collectors);
+      const items = await this.getItems();
+      for (const collector of collectors) {
+        const collectorItems = items.filter(
+          (item) => item.collectorId === collector.id
+        );
+        await this.writeCollectorFileToDisk(collector, collectorItems, handle);
+      }
     } catch (error) {
       if (this.logger) {
         await this.logger.log("WARN", "fs", "Failed to sync collectors", {
@@ -747,11 +1015,8 @@ export class StorageService {
     const handle = await this.restoreCollectorDirectory();
     if (!handle) return;
     try {
-      const collectorDir = await handle.getDirectoryHandle(collector.name, {
-        create: true
-      });
       const items = allItems.filter((item) => item.collectorId === collector.id);
-      await this.writeJsonFile(collectorDir, "items.json", items);
+      await this.writeCollectorFileToDisk(collector, items, handle);
       if (syncCollectors) {
         await this.writeAllCollectorsToDisk();
       }
@@ -784,9 +1049,6 @@ export class StorageService {
       [STORAGE_KEYS.COLLECTORS]: nextCollectors
     });
     await this.writeAllCollectorsToDisk();
-    for (const collector of nextCollectors) {
-      await this.writeCollectorItemsToDisk(collector, nextItems, false);
-    }
     return true;
   }
 

@@ -422,7 +422,7 @@ settingsPickCollectors?.addEventListener("click", async () => {
   const handle = await storage.requestCollectorDirectory();
   if (!handle) return;
   await storage.storeCollectorDirectoryHandle(handle);
-  await storage.writeAllCollectorsToDisk();
+  await storage.loadCollectorsFromDisk();
   await logger.log("INFO", "fs", "Picked collector folder", {
     name: handle.name || ""
   });
@@ -438,13 +438,14 @@ settingsPickCollectors?.addEventListener("click", async () => {
     settingsCollectorsPath.textContent = handle.name || "Not set";
   }
   await updateSettingsUI({ preferExistingPaths: true });
+  await reloadAllData();
 });
 
 noFolderPick?.addEventListener("click", async () => {
   const handle = await storage.requestCollectorDirectory();
   if (!handle) return;
   await storage.storeCollectorDirectoryHandle(handle);
-  await storage.writeAllCollectorsToDisk();
+  await storage.loadCollectorsFromDisk();
   await writeSettings({ collectorFolderLabel: handle.name || "" });
   await reloadAllData();
   await checkCollectorFolder();
@@ -628,6 +629,7 @@ const checkCollectorFolder = async () => {
 
 const init = async () => {
   await checkAndMigrateSchema(logger);
+  await storage.loadCollectorsFromDisk();
   await reloadAllData();
   await checkCollectorFolder();
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -646,7 +648,7 @@ const init = async () => {
     onboardBanner.classList.remove("hidden");
     onboardPickCollectors.addEventListener("click", async () => {
       await storage.requestCollectorDirectory();
-      await storage.writeAllCollectorsToDisk();
+      await storage.loadCollectorsFromDisk();
       await logger.log("INFO", "onboard", "Picked collectors folder");
       onboardBanner.classList.add("hidden");
       await chrome.storage.local.set({ onboardDone: true });
