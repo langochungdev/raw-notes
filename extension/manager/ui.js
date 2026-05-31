@@ -425,6 +425,13 @@ export const updateSelectionState = (
   selectAllInput.checked = total > 0 && selected === total;
   deleteSelectedButton.disabled = selectedIds.size === 0;
   deleteSelectedButton.classList.toggle("is-hidden", selectedIds.size === 0);
+  
+  const bulkMoveSelect = document.getElementById("bulk-move-select");
+  if (bulkMoveSelect) {
+    bulkMoveSelect.disabled = selectedIds.size === 0;
+    bulkMoveSelect.classList.toggle("is-hidden", selectedIds.size === 0);
+  }
+
   if (itemsCount) {
     itemsCount.textContent = `${total} items`;
   }

@@ -63,6 +63,7 @@ export const attachSelectionHandlers = ({
     searchService.index(snapshot.items).then(() => {
       renderCollectors();
       refreshItems();
+      updateBulkMoveSelect();
     });
   };
 
@@ -182,6 +183,7 @@ export const attachSelectionHandlers = ({
     await searchService.index(nextItems);
     renderCollectors();
     refreshItems();
+    updateBulkMoveSelect();
     notifySelectionChange();
 
     const toast = showUndoToast(doc, `Deleted ${ids.length} items`, () => {
