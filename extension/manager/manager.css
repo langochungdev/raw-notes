@@ -1059,12 +1059,20 @@ margin-bottom: 12px;
 
 .anki-panel {
     width: min(980px, 94vw);
+    max-height: 92vh;
 }
 
 .anki-panel.is-vocab-table {
     width: 98vw;
-    max-width: 1600px;
-    max-height: 90vh;
+    max-width: none;
+    height: auto;
+    max-height: 92vh;
+}
+
+.anki-panel.is-vocab-single {
+    width: min(50vw, 640px);
+    height: auto;
+    max-height: 92vh;
 }
 
 .anki-tabs {
@@ -1287,8 +1295,7 @@ margin-bottom: 12px;
 }
 
 .anki-vocab-input:focus {
-    outline: 2px solid #f1f0ee;
-    outline-offset: 2px;
+    outline: none;
 }
 
 .anki-cell[contenteditable="true"] {
@@ -1524,6 +1531,15 @@ margin-bottom: 12px;
 
 .anki-panel.is-vocab {
     width: min(1200px, 96vw);
+}
+
+.anki-panel.is-vocab.is-vocab-table {
+    width: 98vw;
+    max-width: none;
+}
+
+.anki-panel.is-vocab.is-vocab-single {
+    width: min(50vw, 640px);
 }
 
 .anki-review-dots {

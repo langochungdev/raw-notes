@@ -49,19 +49,19 @@ export const createAnkiExportModal = ({
   const vocabFields = [
     { key: "keyword", label: "Keyword", type: "text" },
     { key: "suggestion", label: "Suggestion", type: "text" },
+    { key: "short_vi", label: "Short Vietnamese", type: "text" },
+    { key: "keyword_sound", label: "Keyword_Sound", type: "audio" },
+    { key: "image", label: "Image", type: "image" },
+    { key: "transcription", label: "Transcription", type: "text" },
     {
       key: "explanation",
       label: "Explanation",
       type: "cloze",
       hint: "Dung {{c1::tu}} de tao cloze"
     },
-    { key: "transcription", label: "Transcription", type: "text" },
-    { key: "short_vi", label: "Short Vietnamese", type: "text" },
-    { key: "full_vi", label: "Full Vietnamese", type: "text" },
-    { key: "image", label: "Image", type: "image" },
-    { key: "keyword_sound", label: "Keyword_Sound", type: "audio" },
     { key: "meaning_sound", label: "Meaning_Sound", type: "audio" },
-    { key: "example_sound", label: "Example_Sound", type: "audio" }
+    { key: "example_sound", label: "Example_Sound", type: "audio" },
+    { key: "full_vi", label: "Full Vietnamese", type: "text" }
   ];
 
   const setFooterCount = (count) => {
@@ -476,6 +476,7 @@ export const createAnkiExportModal = ({
     }
     if (panel) {
       panel.classList.toggle("is-vocab-table", isVocab && vocabEditMode === "table");
+      panel.classList.toggle("is-vocab-single", isVocab && vocabEditMode === "single");
     }
     if (table) {
       table.classList.toggle("hidden", isVocab && vocabEditMode !== "table");
