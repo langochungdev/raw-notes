@@ -6,6 +6,7 @@ export const renderCollectors = (
 ) => {
   collectorList.innerHTML = "";
   collectors.forEach((collector) => {
+    let isRenaming = false;
     const card = document.createElement("div");
     card.className = "collector-card";
     if (collector.id === activeCollectorId) {
@@ -32,6 +33,45 @@ export const renderCollectors = (
     const name = document.createElement("div");
     name.className = "collector-name";
     name.textContent = collector.name;
+    const endRename = () => {
+      if (!isRenaming) return;
+      isRenaming = false;
+    };
+    const beginRename = () => {
+      if (isRenaming) return;
+      isRenaming = true;
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "collector-name-input";
+      input.value = collector.name;
+      const commit = async () => {
+        const nextName = input.value.trim();
+        input.replaceWith(name);
+        endRename();
+        if (!nextName || nextName === collector.name) return;
+        name.textContent = nextName;
+        await actions?.onRename?.(collector, nextName);
+      };
+      const cancel = () => {
+        input.replaceWith(name);
+        endRename();
+      };
+      input.addEventListener("blur", () => {
+        commit();
+      });
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          cancel();
+        }
+      });
+      name.replaceWith(input);
+      input.focus();
+      input.select();
+    };
     const info = document.createElement("div");
     info.className = "collector-info";
     if (selectInput) {
@@ -44,14 +84,23 @@ export const renderCollectors = (
     count.textContent = `${collector.itemCount || 0}`;
     card.appendChild(info);
     card.appendChild(count);
-    card.addEventListener("click", () => {
+    card.addEventListener("click", (event) => {
+      if (event.detail > 1) return;
+      if (isRenaming) return;
       if (selectionMode) {
         actions?.onToggleSelect?.(collector.id);
         return;
       }
       actions?.onSelect?.(collector.id);
     });
+    card.addEventListener("dblclick", (event) => {
+      if (selectionMode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      beginRename();
+    });
     card.addEventListener("keydown", (event) => {
+      if (isRenaming) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         if (selectionMode) {
@@ -60,6 +109,10 @@ export const renderCollectors = (
           actions?.onSelect?.(collector.id);
         }
       }
+    });
+    name.addEventListener("click", (event) => {
+      if (selectionMode) return;
+      event.stopPropagation();
     });
     collectorList.appendChild(card);
   });

@@ -43,7 +43,7 @@ export const createCollectorManager = ({
       selectedCollectorIds: getSelectedCollectorIds?.(),
       onSelect: (id) => handleCollectorSelect(id),
       onToggleSelect: (id) => toggleCollectorSelected?.(id),
-      onRename: (collector) => handleCollectorRename(collector),
+      onRename: (collector, nextName) => handleCollectorRename(collector, nextName),
       onDelete: (collector) => handleCollectorDelete(collector),
       onColor: (collector) => handleCollectorColor(collector)
     });
@@ -66,8 +66,8 @@ export const createCollectorManager = ({
     await loadCollectors();
   };
 
-  const handleCollectorRename = async (collector) => {
-    const name = window.prompt("New collector name", collector.name);
+  const handleCollectorRename = async (collector, nextName) => {
+    const name = (nextName ?? window.prompt("New collector name", collector.name) ?? "").trim();
     if (!name || name === collector.name) return;
     await storage.updateCollector(collector.id, { name });
     await loadCollectors();
