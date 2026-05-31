@@ -727,7 +727,7 @@ const checkVersion = async () => {
     const currentVersion = manifest.version.replace(/^v/i, "");
     const versionEl = document.querySelector(".status-version");
     if (versionEl) {
-      versionEl.textContent = `langochung.me - RawNotes v${currentVersion}`;
+      versionEl.textContent = `RawNotes v${currentVersion}`;
     }
 
     const today = new Date().toISOString().split("T")[0];
@@ -750,17 +750,9 @@ const checkVersion = async () => {
     }
 
     if (latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
-      const floatBtn = document.createElement("a");
-      floatBtn.href = "https://rawnotes.langochung.me/";
-      floatBtn.target = "_blank";
-      floatBtn.className = "update-float-btn";
-      floatBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 20V10M18 14l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        Update v${latestVersion}
-      `;
-      document.body.appendChild(floatBtn);
+      if (versionEl) {
+        versionEl.innerHTML = `<a href="https://rawnotes.langochung.me/" target="_blank" style="color: #e24b4a; text-decoration: none;">RawNotes new version v${latestVersion}</a>`;
+      }
     }
   } catch (error) {
     console.error("Version check failed", error);
