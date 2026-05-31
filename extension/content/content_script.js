@@ -23,6 +23,7 @@
   let restoreQueued = false;
   let restoreObserver = null;
   let lastRestoreUrl = currentUrl;
+  let collectorColorCache = new Map();
   const SETTINGS_KEY = "tc_settings";
   const DEFAULT_SETTINGS = {
     sidebarOpenMode: "float",
@@ -401,7 +402,11 @@
   };
 
   const wrapRangeWithHighlights = (range, itemId, color) => {
-    const root = range.commonAncestorContainer;
+    const root =
+      range.commonAncestorContainer?.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentNode
+        : range.commonAncestorContainer;
+    if (!root) return false;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         if (!range.intersectsNode(node)) return NodeFilter.FILTER_REJECT;
@@ -501,7 +506,12 @@
           const endOffset = Math.max(0, Math.min(endPos - endInfo.start, endInfo.node.textContent.length));
           range.setStart(startInfo.node, startOffset);
           range.setEnd(endInfo.node, endOffset);
-          return range;
+          const overlapsHighlight = Array.from(document.querySelectorAll(".tc-highlight")).some((el) =>
+            range.intersectsNode(el)
+          );
+          if (!overlapsHighlight) {
+            return range;
+          }
         }
       }
       offset = found + needle.length;
@@ -533,7 +543,7 @@
       const collectorsResponse = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
       const items = itemsResponse?.items || [];
       const collectors = collectorsResponse?.collectors || [];
-      const collectorColors = new Map(
+      collectorColorCache = new Map(
         collectors.map((collector) => [collector.id, collector.color || "#d97706"])
       );
       const relevant = items.filter((item) => {
@@ -544,7 +554,7 @@
       });
       relevant.forEach((item) => {
         if (hasHighlightForItem(item.id)) return;
-        const color = collectorColors.get(item.collectorId) || "#d97706";
+        const color = collectorColorCache.get(item.collectorId) || "#d97706";
         const ok = highlightFromLocation(item, item.location, color);
         if (!ok) {
           const range = findRangeByContext(item, item.location);
@@ -696,6 +706,9 @@
     }
     const response = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
     const collectors = response?.collectors || [];
+    collectorColorCache = new Map(
+      collectors.map((collector) => [collector.id, collector.color || "#d97706"])
+    );
     collectorButtons.innerHTML = "";
     collectors.forEach((collector) => {
       const button = document.createElement("button");
@@ -744,6 +757,25 @@
     closePanel();
     if (response?.ok) {
       showToast("Saved");
+      const item = response.item;
+      const range = lastRange?.cloneRange ? lastRange.cloneRange() : null;
+      if (item?.id && range) {
+        let color = collectorColorCache.get(item.collectorId);
+        if (!color) {
+          const collectorsResponse = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
+          const collectors = collectorsResponse?.collectors || [];
+          collectorColorCache = new Map(
+            collectors.map((collector) => [collector.id, collector.color || "#d97706"])
+          );
+          color = collectorColorCache.get(item.collectorId) || "#d97706";
+        }
+        const ok = wrapRangeWithHighlights(range, item.id, color);
+        if (!ok) {
+          scheduleRestore(0);
+        }
+      } else {
+        scheduleRestore(0);
+      }
     } else {
       showToast("Failed");
     }
