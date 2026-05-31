@@ -216,7 +216,7 @@ export const renderItems = (
     content.appendChild(meta);
     card.appendChild(select);
     card.appendChild(content);
-    if (actions?.onEdit || actions?.onCopyText) {
+    if (actions?.onEdit || actions?.onCopyText || actions?.onDelete) {
       const actionRow = document.createElement("div");
       actionRow.className = "item-actions";
       if (actions?.onCopyText) {
@@ -233,6 +233,23 @@ export const renderItems = (
       editButton.textContent = "Edit";
       editButton.addEventListener("click", () => actions.onEdit(item));
       actionRow.appendChild(editButton);
+      if (actions?.onDelete) {
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "item-action icon-only danger-icon";
+        deleteButton.setAttribute("aria-label", "Delete item");
+        deleteButton.innerHTML = `
+          <span class="button-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </span>
+        `;
+        deleteButton.addEventListener("click", () => actions.onDelete(item));
+        actionRow.appendChild(deleteButton);
+      }
       card.appendChild(actionRow);
     }
     itemList.appendChild(card);

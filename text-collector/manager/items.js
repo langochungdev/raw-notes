@@ -51,6 +51,26 @@ export const createItemManager = ({
     }
   };
 
+  const handleItemDelete = async (item) => {
+    if (!item?.id) return;
+    const snapshot = [...getAllItems()];
+    const selectedIds = getSelectedIds();
+    selectedIds?.delete(item.id);
+    const nextItems = snapshot.filter((entry) => entry.id !== item.id);
+    setAllItems(nextItems);
+    await searchService.index(nextItems);
+    refreshItems();
+    try {
+      await storage.deleteItems([item.id]);
+      await reloadItems?.();
+    } catch (error) {
+      setAllItems(snapshot);
+      await searchService.index(snapshot);
+      refreshItems();
+      showNotice(document, "Delete failed");
+    }
+  };
+
   const refreshItems = () => {
     const searchQuery = getSearchQuery();
     const { items: searchResults, matchesById } =
@@ -74,7 +94,8 @@ export const createItemManager = ({
     renderItems(itemList, results, getSelectedIds(), searchQuery, matchesById, {
       onEdit: (item) => handleItemEdit(item),
       onCopyShare,
-      onCopyText
+      onCopyText,
+      onDelete: (item) => handleItemDelete(item)
     });
     updateSelectionState(
       selectAllInput,

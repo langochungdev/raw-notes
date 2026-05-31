@@ -125,7 +125,23 @@
                 </div>
             </aside>
             <section class="items">
-                <div class="section-title" id="items-title">Items</div>
+                <div class="items-header">
+                    <div class="section-title" id="items-title">Items</div>
+                    <div class="items-actions">
+                        <label class="select-all">
+                            <input id="select-all" type="checkbox" aria-label="Select all" />
+                        </label>
+                        <button id="delete-selected" class="icon-action danger-icon is-hidden" type="button" aria-label="Delete selected" disabled>
+                            <span class="button-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
                 <div id="manual-panel" class="manual-panel hidden">
                     <form id="manual-entry" class="manual-entry">
                         <div class="manual-row">
@@ -151,30 +167,13 @@
                         </div>
                     </form>
                 </div>
-                <div class="items-toolbar">
-                    <div class="bulk-left">
-                        <label class="select-all">
-                            <input id="select-all" type="checkbox" />
-                        </label>
-                        <div id="items-count" class="items-count">0 items</div>
-                    </div>
-                    <button id="delete-selected" class="icon-action danger-icon is-hidden" type="button" aria-label="Delete selected" disabled>
-                        <span class="button-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                        </span>
-                    </button>
-                </div>
                 <div id="item-list" class="item-list"></div>
                 <div class="status-footer">
                     <div class="status-left">
                         <span class="status-dot" aria-hidden="true"></span>
                         <span id="minisearch-status">MiniSearch ready · 0 indexed</span>
                     </div>
-                    <div class="status-right">TextCollector v1.0</div>
+                    <div class="status-right status-version">TextCollector v1.0</div>
                 </div>
             </section>
         </main>

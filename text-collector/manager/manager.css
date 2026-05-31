@@ -270,7 +270,7 @@ button {
 }
 
 .items {
-    padding: 16px 20px;
+    padding: 16px 20px 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -317,7 +317,8 @@ button {
 
 .sidebar-group-title {
     margin: 8px 0 10px;
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1;
     text-transform: uppercase;
     letter-spacing: 0.16em;
     color: #9e9c99;
@@ -348,7 +349,20 @@ button {
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: #9e9c99;
+}
+
+.items-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
     margin-bottom: 12px;
+}
+
+.items-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .collector-list,
@@ -621,7 +635,7 @@ margin-bottom: 12px;
     height: 16px;
 }
 
-.items-toolbar input[type="checkbox"],
+.select-all input,
 .item-list input[type="checkbox"],
 .collector-select {
     appearance: none;
@@ -633,7 +647,7 @@ margin-bottom: 12px;
     cursor: pointer;
 }
 
-.items-toolbar input[type="checkbox"]::before,
+.select-all input::before,
 .item-list input[type="checkbox"]::before,
 .collector-select::before {
     content: "";
@@ -645,8 +659,8 @@ margin-bottom: 12px;
     background: #d9a441;
 }
 
-.items-toolbar input[type="checkbox"]:checked::before,
-.items-toolbar input[type="checkbox"]:indeterminate::before,
+.select-all input:checked::before,
+.select-all input:indeterminate::before,
 .item-list input[type="checkbox"]:checked::before,
 .item-list input[type="checkbox"]:indeterminate::before,
 .collector-select:checked::before {
@@ -773,6 +787,12 @@ margin-bottom: 12px;
     min-height: 34px;
 }
 
+.item-action.icon-only {
+    padding: 8px;
+    width: 36px;
+    justify-content: center;
+}
+
 .text-highlight {
     background: rgba(217, 164, 65, 0.25);
     color: #f1f0ee;
@@ -792,21 +812,28 @@ margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     margin-top: auto;
-    padding: 12px 0 8px;
+    padding: 4px 0;
     border-top: 1px solid #4a4845;
-    font-size: 12px;
+    font-size: 11px;
     color: #9e9c99;
     position: sticky;
     bottom: 0;
     background: #282725;
     z-index: 2;
+    line-height: 1.2;
 }
 
 .status-left {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.status-right {
+    margin-left: auto;
+    color: #9e9c99;
 }
 
 .status-dot {
