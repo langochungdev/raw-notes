@@ -35,8 +35,7 @@
   let highlightClickTimer = null;
   const SETTINGS_KEY = "tc_settings";
   const DEFAULT_SETTINGS = {
-    sidebarOpenMode: "float",
-    sidebarShortcut: ""
+    sidebarOpenMode: "float"
   };
   let settingsState = { ...DEFAULT_SETTINGS };
   let resolveSource = () => ({
@@ -58,7 +57,8 @@
     try {
       return await chrome.runtime.sendMessage(payload);
     } catch (error) {
-      if (error.message?.includes("Extension context invalidated")) return null;
+      const msg = error?.message || String(error);
+      if (msg.includes("Extension context invalidated")) return null;
       throw error;
     }
   };
@@ -249,6 +249,13 @@
       .tc-inline-input::placeholder {
         color: rgba(255, 255, 255, 0.6);
       }
+      .tc-flash-focus {
+        animation: tc-flash-anim 3s ease-out forwards;
+      }
+      @keyframes tc-flash-anim {
+        0% { box-shadow: 0 0 0 4px var(--collector-color, rgba(241, 240, 238, 0.6)); filter: brightness(1.2); }
+        100% { box-shadow: 0 0 0 0 var(--collector-color, rgba(241, 240, 238, 0)); filter: brightness(1); }
+      }
       @media (hover: hover) {
         .tc-collector:hover {
           border-color: #3a3a3a;
@@ -318,25 +325,6 @@
     }
   };
 
-  const normalizeShortcutKey = (key) => {
-    if (key === " ") return "Space";
-    if (key === "Escape") return "Esc";
-    if (key.length === 1) return key.toUpperCase();
-    return key;
-  };
-
-  const formatShortcutEvent = (event) => {
-    const key = event.key || "";
-    const isModifier = ["Control", "Shift", "Alt", "Meta"].includes(key);
-    if (isModifier) return "";
-    const parts = [];
-    if (event.ctrlKey) parts.push("Ctrl");
-    if (event.altKey) parts.push("Alt");
-    if (event.shiftKey) parts.push("Shift");
-    if (event.metaKey) parts.push("Meta");
-    parts.push(normalizeShortcutKey(key));
-    return parts.join("+");
-  };
 
   const isEditableTarget = (target) => {
     if (!target) return false;
@@ -685,7 +673,10 @@
         }
       });
     } catch (error) {
-      console.warn("Restore highlights failed", error);
+      const msg = error?.message || String(error);
+      if (!msg.includes("Extension context invalidated")) {
+        console.warn("Restore highlights failed", error);
+      }
     } finally {
       restoreInFlight = false;
       if (restoreQueued) {
@@ -733,6 +724,39 @@
     } catch (error) {
       console.warn("Update note failed", error);
     }
+  };
+
+  const handleScrollToHighlight = (item, providedColor) => {
+    if (!item?.location) return;
+    const color = providedColor || collectorColorCache.get(item.collectorIds?.[0] || item.collectorId) || "#f1f0ee";
+    let retryCount = 0;
+
+    const tryHighlight = () => {
+      let ok = highlightFromLocation(item, item.location, color, false);
+      if (!ok) {
+        const range = findRangeByContext(item, item.location);
+        if (range) {
+          wrapRangeWithHighlights(range, item.id, color);
+          ok = true;
+        }
+      }
+
+      if (ok || hasHighlightForItem(item.id)) {
+        const marks = document.querySelectorAll(`.tc-highlight[data-tc-item-id="${item.id}"]`);
+        if (marks.length > 0) {
+          marks[0].scrollIntoView({ behavior: "smooth", block: "center" });
+          marks.forEach((m) => m.classList.add("tc-flash-focus"));
+          setTimeout(() => {
+            marks.forEach((m) => m.classList.remove("tc-flash-focus"));
+          }, 3000);
+        }
+      } else if (retryCount < 3) {
+        retryCount++;
+        setTimeout(tryHighlight, 500);
+      }
+    };
+
+    tryHighlight();
   };
 
   const positionInlineEditor = (rect) => {
@@ -808,6 +832,7 @@
 
   const applySidebarMode = () => {
     const mode = settingsState.sidebarOpenMode;
+    // Tương thích ngược: 'both' hoặc 'float' đều bật.
     const allowFloat = mode === "float" || mode === "both";
     if (edgeButton) {
       edgeButton.style.display = allowFloat ? "flex" : "none";
@@ -879,12 +904,12 @@
     const panelRect = panel.getBoundingClientRect();
     const panelHeight = panelRect.height || 0;
     const panelWidth = panelRect.width || 320;
-    const aboveTop = rect.top + window.scrollY - offset - panelHeight;
-    const belowTop = rect.bottom + window.scrollY + offset;
+    const aboveTop = rect.top - offset - panelHeight;
+    const belowTop = rect.bottom + offset;
     const top = aboveTop >= 8 ? aboveTop : belowTop;
     const left = Math.max(
       8,
-      Math.min(rect.left + window.scrollX, window.innerWidth - panelWidth - 8)
+      Math.min(rect.left, window.innerWidth - panelWidth - 8)
     );
     panel.style.top = `${top}px`;
     panel.style.left = `${left}px`;
@@ -1078,16 +1103,6 @@
       closePanel();
       return;
     }
-    if (isEditableTarget(event.target)) return;
-    const mode = settingsState.sidebarOpenMode;
-    if (mode !== "shortcut" && mode !== "both") return;
-    if (!settingsState.sidebarShortcut) return;
-    const pressed = formatShortcutEvent(event);
-    if (!pressed) return;
-    if (pressed !== settingsState.sidebarShortcut) return;
-    event.preventDefault();
-    event.stopPropagation();
-    await safeSendMessage({ type: "OPEN_SIDEPANEL" });
   });
 
   document.addEventListener(
@@ -1193,9 +1208,12 @@
     scheduleEdgeHide();
   });
 
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "SIDEPANEL_STATE") {
       setEdgeSuppressed(Boolean(message.isOpen));
+    } else if (message?.type === "SCROLL_TO_HIGHLIGHT") {
+      handleScrollToHighlight(message.item, message.color);
+      sendResponse({ ok: true });
     }
   });
 

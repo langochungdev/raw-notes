@@ -35,7 +35,7 @@ const settingsModal = document.getElementById("settings-modal");
 const settingsCloseButton = document.getElementById("settings-close");
 const settingsCollectorsPath = document.getElementById("settings-collectors-path");
 const settingsPickCollectors = document.getElementById("settings-pick-collectors");
-const settingsShortcutInput = document.getElementById("settings-shortcut");
+const settingsGlobalShortcutButton = document.getElementById("settings-global-shortcut");
 const settingsModeInputs = Array.from(
   document.querySelectorAll("input[name=\"sidebar-open-mode\"]")
 );
@@ -124,7 +124,6 @@ let isSearchCollectorOpen = false;
 let reloadAllData = async () => {};
 const DEFAULT_SETTINGS = {
   sidebarOpenMode: "float",
-  sidebarShortcut: "",
   collectorFolderLabel: ""
 };
 let settingsState = { ...DEFAULT_SETTINGS };
@@ -280,34 +279,12 @@ const toggleSearchCollectorPanel = () => {
 
 const searchService = new SearchService();
 
-const formatShortcut = (event) => {
-  const key = event.key || "";
-  const isModifier = ["Control", "Shift", "Alt", "Meta"].includes(key);
-  if (isModifier) return "";
-  const parts = [];
-  if (event.ctrlKey) parts.push("Ctrl");
-  if (event.altKey) parts.push("Alt");
-  if (event.shiftKey) parts.push("Shift");
-  if (event.metaKey) parts.push("Meta");
-  let main = key;
-  if (main === " ") main = "Space";
-  if (main === "Escape") main = "Esc";
-  if (main.length === 1) {
-    main = main.toUpperCase();
-  }
-  parts.push(main);
-  return parts.join("+");
-};
-
 const updateSettingsUI = async (options = {}) => {
   const preferExistingPaths = Boolean(options.preferExistingPaths);
   await readSettings();
   settingsModeInputs.forEach((input) => {
     input.checked = input.value === settingsState.sidebarOpenMode;
   });
-  if (settingsShortcutInput) {
-    settingsShortcutInput.value = settingsState.sidebarShortcut || "";
-  }
   if (settingsCollectorsPath) {
     let handle = await storage.restoreCollectorDirectory();
     if (handle?.name) {
@@ -546,20 +523,11 @@ settingsModeInputs.forEach((input) => {
   });
 });
 
-settingsShortcutInput?.addEventListener("keydown", async (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  if (event.key === "Backspace" || event.key === "Delete") {
-    await writeSettings({ sidebarShortcut: "" });
-    settingsShortcutInput.value = "";
-    showNotice(document, "Shortcut cleared");
-    return;
-  }
-  const next = formatShortcut(event);
-  if (!next) return;
-  await writeSettings({ sidebarShortcut: next });
-  settingsShortcutInput.value = next;
-  showNotice(document, "Shortcut saved");
+settingsGlobalShortcutButton?.addEventListener("click", () => {
+  // Edge detects edge://, Chrome detects chrome://. chrome:// works in Edge extensions too.
+  chrome.tabs.create({ url: "chrome://extensions/shortcuts" }).catch(() => {
+    showNotice(document, "Unable to open shortcuts page directly");
+  });
 });
 
 searchInput.addEventListener("input", () => {

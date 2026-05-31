@@ -30,31 +30,19 @@ const shareMenu = document.getElementById("share-menu");
 const slashMenu = document.getElementById("slash-menu");
 const nodeMenu = document.getElementById("node-menu");
 
-const notifySidepanelState = async (isOpen) => {
-  try {
-    const currentWindow = await chrome.windows.getCurrent();
-    if (!currentWindow?.id) return;
-    await chrome.runtime.sendMessage({
-      type: "SIDEPANEL_STATE",
-      windowId: currentWindow.id,
-      isOpen
-    });
-  } catch (error) {
-    await logger.log("WARN", "sidepanel", "State sync failed", {
-      message: error.message || "state sync failed"
-    });
-  }
-};
+const sidepanelPort = chrome.runtime.connect({ name: "sidepanel" });
 
-window.addEventListener("beforeunload", () => {
-  notifySidepanelState(false);
+chrome.windows.getCurrent().then((currentWindow) => {
+  if (currentWindow?.id) {
+    sidepanelPort.postMessage({ type: "INIT", windowId: currentWindow.id });
+  }
 });
 
-setInterval(() => {
-  notifySidepanelState(true);
-}, 2000);
-
-notifySidepanelState(true);
+sidepanelPort.onMessage.addListener((message) => {
+  if (message?.type === "CLOSE") {
+    window.close();
+  }
+});
 
 editorBody.dataset.placeholder = "Dòng đầu tiên là tên file...";
 

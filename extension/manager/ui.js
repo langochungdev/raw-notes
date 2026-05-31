@@ -269,6 +269,12 @@ export const renderItems = (
       source.href = sourceUrl;
       source.target = "_blank";
       source.rel = "noopener noreferrer";
+      if (item.location && actions?.onOpenSource) {
+        source.addEventListener("click", (event) => {
+          event.preventDefault();
+          actions.onOpenSource(item);
+        });
+      }
     }
     renderHighlightedText(source, sourceLabel, terms);
     const time = document.createElement("div");

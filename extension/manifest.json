@@ -28,5 +28,10 @@
   "action": {
     "default_popup": "popup/popup.html"
   },
-  "options_page": "manager/manager.html"
+  "options_page": "manager/manager.html",
+  "commands": {
+    "toggle-sidebar": {
+      "description": "Toggle sidebar notes"
+    }
+  }
 }

@@ -5,7 +5,27 @@ import { checkAndMigrateSchema } from "../shared/schema_migration.js";
 const logger = new Logger();
 const storageService = new StorageService(logger);
 const sidePanelByWindow = new Map();
+const sidePanelPorts = new Map();
+const pendingScrollTabs = new Map();
 const SIDE_PANEL_TTL_MS = 6000;
+
+const broadcastSidepanelState = async (windowId, isOpen) => {
+  sidePanelByWindow.set(windowId, {
+    isOpen,
+    lastSeen: isOpen ? Date.now() : 0
+  });
+  const tabs = await chrome.tabs.query({ windowId });
+  await Promise.allSettled(
+    tabs.map((tab) =>
+      tab.id
+        ? chrome.tabs.sendMessage(tab.id, {
+            type: "SIDEPANEL_STATE",
+            isOpen
+          })
+        : Promise.resolve()
+    )
+  );
+};
 
 const waitForTabReady = async (tabId) => {
   if (!tabId) return;
@@ -170,6 +190,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true };
     }
 
+    if (message?.type === "OPEN_ITEM_SOURCE") {
+      (async () => {
+        try {
+          const item = message.item;
+          const color = message.color;
+          const tab = await chrome.tabs.create({ url: item.source.url, active: true });
+          if (tab?.id) {
+            pendingScrollTabs.set(tab.id, { item, color });
+          }
+        } catch (error) {
+          logger?.log?.("WARN", "system", "Failed to open item source", { error: String(error) });
+        }
+      })();
+      return { ok: true };
+    }
+
     if (message?.type === "OPEN_ITEM_DETAIL") {
       const managerUrl = chrome.runtime.getURL("manager/manager.html");
       const tabs = await chrome.tabs.query({ url: managerUrl });
@@ -226,21 +262,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return { ok: false, error: "Missing window" };
       }
       await chrome.sidePanel.open({ windowId });
-      sidePanelByWindow.set(windowId, {
-        isOpen: true,
-        lastSeen: Date.now()
-      });
-      const tabs = await chrome.tabs.query({ windowId });
-      await Promise.allSettled(
-        tabs.map((tab) =>
-          tab.id
-            ? chrome.tabs.sendMessage(tab.id, {
-                type: "SIDEPANEL_STATE",
-                isOpen: true
-              })
-            : Promise.resolve()
-        )
-      );
+      return { ok: true };
+    }
+
+    if (message?.type === "CLOSE_SIDEPANEL_VIA_CONTENT") {
+      const windowId = sender?.tab?.windowId;
+      if (!windowId) {
+        return { ok: false, error: "Missing window" };
+      }
+      const port = sidePanelPorts.get(windowId);
+      if (port) {
+        port.postMessage({ type: "CLOSE" });
+      }
       return { ok: true };
     }
 
@@ -285,11 +318,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!windowId) {
         return { ok: false, error: "Missing window" };
       }
-      const entry = sidePanelByWindow.get(windowId);
-      const isOpen =
-        Boolean(entry?.isOpen) &&
-        Boolean(entry?.lastSeen) &&
-        Date.now() - entry.lastSeen < SIDE_PANEL_TTL_MS;
+      const isOpen = sidePanelPorts.has(windowId);
       return { ok: true, isOpen };
     }
 
@@ -306,4 +335,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
   return true;
+});
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "sidepanel") return;
+  const handleInit = (msg) => {
+    if (msg.type !== "INIT" || !msg.windowId) return;
+    sidePanelPorts.set(msg.windowId, port);
+    broadcastSidepanelState(msg.windowId, true);
+  };
+  port.onMessage.addListener(handleInit);
+  port.onDisconnect.addListener(() => {
+    for (const [windowId, p] of sidePanelPorts) {
+      if (p !== port) continue;
+      sidePanelPorts.delete(windowId);
+      broadcastSidepanelState(windowId, false);
+      break;
+    }
+  });
+});
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== "toggle-sidebar") return;
+  if (!tab?.windowId) return;
+  const windowId = tab.windowId;
+  const port = sidePanelPorts.get(windowId);
+  if (port) {
+    port.postMessage({ type: "CLOSE" });
+  } else {
+    chrome.sidePanel.open({ windowId });
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete") {
+    const data = pendingScrollTabs.get(tabId);
+    if (data) {
+      pendingScrollTabs.delete(tabId);
+      setTimeout(() => {
+        chrome.tabs.sendMessage(tabId, { type: "SCROLL_TO_HIGHLIGHT", item: data.item, color: data.color }).catch(() => {});
+      }, 500);
+    }
+  }
 });

@@ -338,25 +338,21 @@
                     </div>
                 </div>
                 <div class="settings-section">
-                    <div class="settings-section-title">Sidebar open</div>
+                    <div class="settings-section-title">Floating button</div>
                     <div class="settings-options">
                         <label class="settings-option">
                             <input type="radio" name="sidebar-open-mode" value="float" />
-                            <span>Floating button only</span>
+                            <span>On</span>
                         </label>
                         <label class="settings-option">
-                            <input type="radio" name="sidebar-open-mode" value="shortcut" />
-                            <span>Shortcut only</span>
-                        </label>
-                        <label class="settings-option">
-                            <input type="radio" name="sidebar-open-mode" value="both" />
-                            <span>Shortcut + button</span>
+                            <input type="radio" name="sidebar-open-mode" value="none" />
+                            <span>Off</span>
                         </label>
                     </div>
                     <div class="settings-row">
-                        <label class="settings-label" for="settings-shortcut">Shortcut</label>
-                        <input id="settings-shortcut" class="settings-input" type="text" placeholder="Press keys" readonly />
-                        <div class="settings-help">Focus and press keys to set a shortcut.</div>
+                        <label class="settings-label">Global Shortcut</label>
+                        <button id="settings-global-shortcut" type="button" class="outline-button" style="align-self: flex-start; padding: 6px 12px;">Configure</button>
+                        <div class="settings-help">Works everywhere (PDFs, manager, etc.). Recommended.</div>
                     </div>
                 </div>
             </div>
