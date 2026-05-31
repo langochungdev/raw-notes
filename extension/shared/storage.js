@@ -992,13 +992,23 @@ export class StorageService {
   }
 
   async requestCollectorDirectory() {
-    const handle = await window.showDirectoryPicker();
-    return this.storeCollectorDirectoryHandle(handle);
+    try {
+      const handle = await window.showDirectoryPicker();
+      return this.storeCollectorDirectoryHandle(handle);
+    } catch (error) {
+      if (error.name === "AbortError") return null;
+      throw error;
+    }
   }
 
   async requestVaultDirectory() {
-    const handle = await window.showDirectoryPicker();
-    return this.storeVaultDirectoryHandle(handle);
+    try {
+      const handle = await window.showDirectoryPicker();
+      return this.storeVaultDirectoryHandle(handle);
+    } catch (error) {
+      if (error.name === "AbortError") return null;
+      throw error;
+    }
   }
 
   async storeCollectorDirectoryHandle(handle) {

@@ -76,14 +76,14 @@ export const renderCollectors = (
       input.value = collector.name;
       const commit = async () => {
         const nextName = input.value.trim();
-        input.replaceWith(name);
+        if (input.parentNode) input.replaceWith(name);
         endRename();
         if (!nextName || nextName === collector.name) return;
         name.textContent = nextName;
         await actions?.onRename?.(collector, nextName);
       };
       const cancel = () => {
-        input.replaceWith(name);
+        if (input.parentNode) input.replaceWith(name);
         endRename();
       };
       input.addEventListener("blur", () => {

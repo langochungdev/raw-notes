@@ -750,33 +750,6 @@ const init = async () => {
       scheduleReload();
     }
   });
-  const stored = await chrome.storage.local.get("onboardDone");
-  const onboardDone = stored?.onboardDone;
-  const onboardBanner = document.getElementById("onboard-banner");
-  const onboardPickCollectors = document.getElementById("onboard-pick-collectors");
-  const onboardPickVault = document.getElementById("onboard-pick-vault");
-  const onboardSkip = document.getElementById("onboard-done");
-  if (!onboardDone) {
-    onboardBanner.classList.remove("hidden");
-    onboardPickCollectors.addEventListener("click", async () => {
-      await storage.requestCollectorDirectory();
-      await storage.loadCollectorsFromDisk();
-      await logger.log("INFO", "onboard", "Picked collectors folder");
-      onboardBanner.classList.add("hidden");
-      await chrome.storage.local.set({ onboardDone: true });
-      await reloadAllData();
-    });
-    onboardPickVault.addEventListener("click", async () => {
-      await storage.requestVaultDirectory();
-      await logger.log("INFO", "onboard", "Picked vault folder");
-      onboardBanner.classList.add("hidden");
-      await chrome.storage.local.set({ onboardDone: true });
-    });
-    onboardSkip.addEventListener("click", async () => {
-      onboardBanner.classList.add("hidden");
-      await chrome.storage.local.set({ onboardDone: true });
-    });
-  }
 };
 
 init();

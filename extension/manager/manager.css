@@ -31,30 +31,6 @@ body {
     background: #282725;
 }
 
-.onboard-banner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    background: #32312f;
-    border-bottom: 1px solid #4a4845;
-}
-
-.onboard-banner.hidden {
-    display: none;
-}
-
-.onboard-text {
-    color: #c7c3be;
-    font-size: 14px;
-}
-
-.onboard-actions {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
-}
-
 .search-field {
     flex: 1;
     display: flex;

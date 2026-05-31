@@ -45,6 +45,24 @@
     type: "unknown"
   });
 
+  const isContextValid = () => {
+    try {
+      return Boolean(chrome?.runtime?.id);
+    } catch {
+      return false;
+    }
+  };
+
+  const safeSendMessage = async (payload) => {
+    if (!isContextValid()) return null;
+    try {
+      return await chrome.runtime.sendMessage(payload);
+    } catch (error) {
+      if (error.message?.includes("Extension context invalidated")) return null;
+      throw error;
+    }
+  };
+
   const updateUrl = () => {
     const nextUrl = window.location.href;
     if (nextUrl === currentUrl) return;
@@ -641,8 +659,8 @@
     restoreInFlight = true;
     restoreQueued = false;
     try {
-      const itemsResponse = await chrome.runtime.sendMessage({ type: "GET_ITEMS" });
-      const collectorsResponse = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
+      const itemsResponse = await safeSendMessage({ type: "GET_ITEMS" });
+      const collectorsResponse = await safeSendMessage({ type: "GET_COLLECTORS" });
       const items = itemsResponse?.items || [];
       itemCache = new Map(items.map((item) => [item.id, item]));
       const collectors = collectorsResponse?.collectors || [];
@@ -706,7 +724,7 @@
     if (!shouldSave || !itemId || !item) return;
     if ((item.note || "") === nextNote) return;
     try {
-      await chrome.runtime.sendMessage({
+      await safeSendMessage({
         type: "UPDATE_ITEM",
         id: itemId,
         updates: { note: nextNote }
@@ -740,7 +758,7 @@
     let item = itemCache.get(itemId);
     if (!item) {
       try {
-        const itemsResponse = await chrome.runtime.sendMessage({ type: "GET_ITEMS" });
+        const itemsResponse = await safeSendMessage({ type: "GET_ITEMS" });
         const items = itemsResponse?.items || [];
         itemCache = new Map(items.map((entry) => [entry.id, entry]));
         item = itemCache.get(itemId) || null;
@@ -808,7 +826,7 @@
       const next = stored[SETTINGS_KEY] || {};
       settingsState = { ...DEFAULT_SETTINGS, ...next };
       applySidebarMode();
-    } catch (error) {
+    } catch {
       settingsState = { ...DEFAULT_SETTINGS };
       applySidebarMode();
     }
@@ -821,7 +839,7 @@
     lastStateCheckAt = now;
     stateCheckInFlight = true;
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await safeSendMessage({
         type: "SIDEPANEL_GET_STATE"
       });
       if (response?.ok) {
@@ -874,7 +892,7 @@
 
   const updateCollectors = async () => {
     if (!collectorButtons) return;
-    const dirCheck = await chrome.runtime.sendMessage({ type: "HAS_COLLECTOR_DIR" });
+    const dirCheck = await safeSendMessage({ type: "HAS_COLLECTOR_DIR" });
     if (!dirCheck?.hasDir) {
       collectorButtons.innerHTML = "";
       const pickButton = document.createElement("button");
@@ -886,12 +904,12 @@
         event.preventDefault();
         event.stopPropagation();
         closePanel();
-        await chrome.runtime.sendMessage({ type: "OPEN_MANAGER" });
+        await safeSendMessage({ type: "OPEN_MANAGER" });
       });
       collectorButtons.appendChild(pickButton);
       return;
     }
-    const response = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
+    const response = await safeSendMessage({ type: "GET_COLLECTORS" });
     const collectors = response?.collectors || [];
     collectorColorCache = new Map(
       collectors.map((collector) => [collector.id, collector.color || "#f1f0ee"])
@@ -941,7 +959,7 @@
       location: location || undefined,
       collectorId: collectorId || undefined
     };
-    const response = await chrome.runtime.sendMessage(payload);
+    const response = await safeSendMessage(payload);
     closePanel();
     if (response?.ok) {
       showToast("Saved");
@@ -953,7 +971,7 @@
       if (item?.id && range) {
         let color = collectorColorCache.get(item.collectorId);
         if (!color) {
-          const collectorsResponse = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
+          const collectorsResponse = await safeSendMessage({ type: "GET_COLLECTORS" });
           const collectors = collectorsResponse?.collectors || [];
           collectorColorCache = new Map(
             collectors.map((collector) => [collector.id, collector.color || "#d97706"])
@@ -1044,7 +1062,7 @@
     const itemId = inlineEditorItemId;
     if (!itemId) return;
     try {
-      await chrome.runtime.sendMessage({ type: "DELETE_ITEMS", ids: [itemId] });
+      await safeSendMessage({ type: "DELETE_ITEMS", ids: [itemId] });
       itemCache.delete(itemId);
       clearHighlightsForItem(itemId);
     } catch (error) {
@@ -1069,7 +1087,7 @@
     if (pressed !== settingsState.sidebarShortcut) return;
     event.preventDefault();
     event.stopPropagation();
-    await chrome.runtime.sendMessage({ type: "OPEN_SIDEPANEL" });
+    await safeSendMessage({ type: "OPEN_SIDEPANEL" });
   });
 
   document.addEventListener(
@@ -1145,7 +1163,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    await chrome.runtime.sendMessage({ type: "OPEN_SIDEPANEL" });
+    await safeSendMessage({ type: "OPEN_SIDEPANEL" });
   });
 
   edgeButton?.addEventListener("pointerdown", (event) => {
@@ -1181,12 +1199,14 @@
     }
   });
 
-  chrome.runtime
-    .sendMessage({ type: "SIDEPANEL_GET_STATE" })
-    .then((response) => {
-      if (response?.ok) {
-        setEdgeSuppressed(Boolean(response.isOpen));
-      }
-    })
-    .catch(() => {});
+  if (isContextValid()) {
+    chrome.runtime
+      .sendMessage({ type: "SIDEPANEL_GET_STATE" })
+      .then((response) => {
+        if (response?.ok) {
+          setEdgeSuppressed(Boolean(response.isOpen));
+        }
+      })
+      .catch(() => {});
+  }
 })();
