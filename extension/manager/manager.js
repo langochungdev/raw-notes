@@ -43,6 +43,7 @@ const searchInput = document.getElementById("search");
 const searchCollectorsToggle = document.getElementById("search-collectors-toggle");
 const searchCollectorsPanel = document.getElementById("search-collectors-panel");
 const selectAllInput = document.getElementById("select-all");
+const bulkMoveSelect = document.getElementById("bulk-move-select");
 const deleteSelectedButton = document.getElementById("delete-selected");
 const itemsCount = document.getElementById("items-count");
 const importButton = document.getElementById("import-collector");
@@ -324,7 +325,15 @@ const itemManager = createItemManager({
     currentResults = results;
   },
   setAllItems: (items) => setAllItemsState(items),
-  getAllItems: () => allItems
+  getAllItems: () => allItems,
+  getAllCollectors: () => allCollectors,
+  setAllCollectors: (collectors) => {
+    allCollectors = collectors;
+  },
+  recalcCollectorCounts,
+  renderCollectors: () => {
+    collectorManager.renderCollectorList();
+  }
 });
 
 const collectorManager = createCollectorManager({
@@ -580,6 +589,7 @@ attachManualEntry({
 attachSelectionHandlers({
   itemList,
   selectAllInput,
+  bulkMoveSelect,
   deleteSelectedButton,
   itemsCount,
   getCurrentResults: () => currentResults,
@@ -599,6 +609,7 @@ attachSelectionHandlers({
   },
   refreshItems: itemManager.refreshItems,
   showUndoToast,
+  showNotice,
   updateSelectionState,
   storage,
   logger,

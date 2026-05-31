@@ -19,8 +19,22 @@ export const createItemManager = ({
   getSelectedIds,
   setCurrentResults,
   setAllItems,
-  getAllItems
+  getAllItems,
+  getAllCollectors,
+  setAllCollectors,
+  recalcCollectorCounts,
+  renderCollectors
 }) => {
+  const getItemCollectorIds = (item) => {
+    if (Array.isArray(item.collectorIds) && item.collectorIds.length > 0) {
+      return item.collectorIds;
+    }
+    if (item.collectorId) {
+      return [item.collectorId];
+    }
+    return [];
+  };
+
   const handleItemEdit = async (item) => {
     const nextValues = await openEditModal(item);
     if (!nextValues) return;
@@ -46,6 +60,70 @@ export const createItemManager = ({
     } catch (error) {
       setAllItems(snapshot);
       await searchService.index(snapshot);
+      refreshItems();
+      showNotice(document, "Update failed");
+    }
+  };
+
+  const handleAddCollector = async (item, collectorId) => {
+    if (!collectorId) return;
+    const currentIds = new Set(getItemCollectorIds(item));
+    if (currentIds.has(collectorId)) return;
+    const now = new Date().toISOString();
+    const snapshotItems = [...getAllItems()];
+    const snapshotCollectors = getAllCollectors ? [...getAllCollectors()] : null;
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimisticItem = {
+      id: tempId,
+      collectorId,
+      collectorIds: [collectorId],
+      text: item.text || "",
+      note: item.note || "",
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      source: item.source || null,
+      createdAt: now,
+      updatedAt: now,
+      shareUrl: null,
+      shareEditCode: null
+    };
+    const updatedItems = [...getAllItems(), optimisticItem];
+    setAllItems(updatedItems);
+    if (setAllCollectors && recalcCollectorCounts && getAllCollectors) {
+      setAllCollectors(recalcCollectorCounts(updatedItems, getAllCollectors()));
+      renderCollectors?.();
+    }
+    await searchService.index(updatedItems);
+    refreshItems();
+    try {
+      const saved = await storage.saveItem({
+        collectorId,
+        collectorIds: [collectorId],
+        text: optimisticItem.text,
+        note: optimisticItem.note,
+        tags: optimisticItem.tags,
+        source: optimisticItem.source
+      });
+      if (reloadItems) {
+        await reloadItems();
+        return;
+      }
+      const finalItems = getAllItems()
+        .filter((entry) => entry.id !== tempId)
+        .concat(saved);
+      setAllItems(finalItems);
+      if (setAllCollectors && recalcCollectorCounts && getAllCollectors) {
+        setAllCollectors(recalcCollectorCounts(finalItems, getAllCollectors()));
+        renderCollectors?.();
+      }
+      await searchService.index(finalItems);
+      refreshItems();
+    } catch (error) {
+      setAllItems(snapshotItems);
+      if (snapshotCollectors && setAllCollectors) {
+        setAllCollectors(snapshotCollectors);
+        renderCollectors?.();
+      }
+      await searchService.index(snapshotItems);
       refreshItems();
       showNotice(document, "Update failed");
     }
@@ -81,11 +159,16 @@ export const createItemManager = ({
       searchCollectorIds.length === 0 || searchCollectorIds.includes("__all__");
     if (!isAllCollectors) {
       const allowed = new Set(searchCollectorIds);
-      results = results.filter((item) => allowed.has(item.collectorId));
+      results = results.filter((item) => {
+        const ids = getItemCollectorIds(item);
+        return ids.some((id) => allowed.has(id));
+      });
     } else {
       const activeCollectorId = getActiveCollectorId();
       if (activeCollectorId) {
-        results = results.filter((item) => item.collectorId === activeCollectorId);
+        results = results.filter((item) =>
+          getItemCollectorIds(item).includes(activeCollectorId)
+        );
       }
     }
     setCurrentResults(results);
@@ -95,7 +178,9 @@ export const createItemManager = ({
       onEdit: (item) => handleItemEdit(item),
       onCopyShare,
       onCopyText,
-      onDelete: (item) => handleItemDelete(item)
+      onDelete: (item) => handleItemDelete(item),
+      onAddCollector: (item, collectorId) => handleAddCollector(item, collectorId),
+      getCollectors: getAllCollectors
     });
     updateSelectionState(
       selectAllInput,

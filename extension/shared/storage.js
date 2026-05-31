@@ -185,9 +185,19 @@ export class StorageService {
 
   normalizeItemData(raw, collectorId) {
     const now = new Date().toISOString();
+    const rawCollectorIds = Array.isArray(raw?.collectorIds)
+      ? raw.collectorIds.filter(Boolean)
+      : [];
+    const fallbackCollectorId = collectorId || raw?.collectorId || null;
+    const collectorIds = rawCollectorIds.length > 0
+      ? rawCollectorIds
+      : fallbackCollectorId
+        ? [fallbackCollectorId]
+        : [];
     return {
       id: raw?.id || crypto.randomUUID(),
-      collectorId,
+      collectorId: collectorIds[0] || fallbackCollectorId,
+      collectorIds,
       text: raw?.text || "",
       note: raw?.note || "",
       tags: Array.isArray(raw?.tags) ? raw.tags : [],
@@ -218,7 +228,7 @@ export class StorageService {
     const collectors = [];
     const items = [];
     const collectorIdSet = new Set();
-    const itemIdSet = new Set();
+    const itemsById = new Map();
 
     const entries = [];
     for await (const [name, entry] of handle.entries()) {
@@ -262,22 +272,42 @@ export class StorageService {
       collectorIdSet.add(collector.id);
 
       const fileItems = Array.isArray(data?.items) ? data.items : [];
-      const normalizedItems = fileItems.map((item) => {
-        let next = this.normalizeItemData(item, collector.id);
-        if (itemIdSet.has(next.id)) {
-          next = this.normalizeItemData({
-            ...next,
-            id: crypto.randomUUID()
-          }, collector.id);
+      const normalizedItems = fileItems.map((item) =>
+        this.normalizeItemData(item, collector.id)
+      );
+
+      normalizedItems.forEach((next) => {
+        const existing = itemsById.get(next.id);
+        if (!existing) {
+          itemsById.set(next.id, next);
+          return;
         }
-        itemIdSet.add(next.id);
-        return next;
+        const existingIds = Array.isArray(existing.collectorIds)
+          ? existing.collectorIds
+          : existing.collectorId
+            ? [existing.collectorId]
+            : [];
+        const nextIds = Array.isArray(next.collectorIds)
+          ? next.collectorIds
+          : next.collectorId
+            ? [next.collectorId]
+            : [];
+        const mergedIds = Array.from(new Set([...existingIds, ...nextIds]));
+        let merged = existing;
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const nextTime = new Date(next.updatedAt || next.createdAt || 0).getTime();
+        if (nextTime > existingTime) {
+          merged = { ...next, collectorIds: mergedIds, collectorId: mergedIds[0] };
+        } else {
+          merged = { ...existing, collectorIds: mergedIds, collectorId: mergedIds[0] };
+        }
+        itemsById.set(next.id, merged);
       });
 
       collector.itemCount = normalizedItems.length;
       collectors.push(collector);
-      items.push(...normalizedItems);
     }
+    items.push(...itemsById.values());
 
     return { collectors, items };
   }
@@ -371,6 +401,24 @@ export class StorageService {
     }
 
     return { loaded: true, collectors, items, migratedLegacy };
+  }
+
+  recalcCollectorCounts(items, collectors) {
+    const counts = new Map();
+    items.forEach((item) => {
+      const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+        ? item.collectorIds
+        : item.collectorId
+          ? [item.collectorId]
+          : [];
+      ids.forEach((id) => {
+        counts.set(id, (counts.get(id) || 0) + 1);
+      });
+    });
+    return collectors.map((collector) => ({
+      ...collector,
+      itemCount: counts.get(collector.id) || 0
+    }));
   }
 
   async writeCollectorFileToDisk(collector, items, dirHandle = null) {
@@ -469,9 +517,26 @@ export class StorageService {
     const target = collectors.find((collector) => collector.id === id);
     const nextCollectors = collectors.filter((collector) => collector.id !== id);
     const items = await this.getItems();
-    const nextItems = items.filter((item) => item.collectorId !== id);
+    const nextItems = items
+      .map((item) => {
+        const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+          ? item.collectorIds
+          : item.collectorId
+            ? [item.collectorId]
+            : [];
+        if (!ids.includes(id)) return item;
+        const filtered = ids.filter((collectorId) => collectorId !== id);
+        if (filtered.length === 0) return null;
+        return {
+          ...item,
+          collectorIds: filtered,
+          collectorId: filtered[0],
+          updatedAt: new Date().toISOString()
+        };
+      })
+      .filter(Boolean);
     await chrome.storage.local.set({
-      [STORAGE_KEYS.COLLECTORS]: nextCollectors,
+      [STORAGE_KEYS.COLLECTORS]: this.recalcCollectorCounts(nextItems, nextCollectors),
       [STORAGE_KEYS.ITEMS]: nextItems
     });
     await this.writeAllCollectorsToDisk();
@@ -484,8 +549,18 @@ export class StorageService {
   async saveItem(item) {
     const items = await this.getItems();
     const collectors = await this.getCollectors();
-    const collector = collectors.find((c) => c.id === item.collectorId);
-    if (!collector) {
+    const inputCollectorIds = Array.isArray(item.collectorIds)
+      ? item.collectorIds.filter(Boolean)
+      : item.collectorId
+        ? [item.collectorId]
+        : [];
+    if (inputCollectorIds.length === 0) {
+      throw new Error("Collector not found");
+    }
+    const targetCollectorIds = inputCollectorIds.filter((id) =>
+      collectors.some((collector) => collector.id === id)
+    );
+    if (targetCollectorIds.length === 0) {
       throw new Error("Collector not found");
     }
     const nextItem = {
@@ -495,25 +570,22 @@ export class StorageService {
       tags: [],
       shareUrl: null,
       shareEditCode: null,
-      ...item
+      ...item,
+      collectorIds: targetCollectorIds,
+      collectorId: targetCollectorIds[0]
     };
     items.push(nextItem);
-    const nextCollectors = collectors.map((c) => {
-      if (c.id !== collector.id) return c;
-      return {
-        ...c,
-        itemCount: (c.itemCount || 0) + 1,
+    const nextCollectors = this.recalcCollectorCounts(items, collectors).map(
+      (collector) => ({
+        ...collector,
         updatedAt: new Date().toISOString()
-      };
-    });
+      })
+    );
     await chrome.storage.local.set({
       [STORAGE_KEYS.ITEMS]: items,
       [STORAGE_KEYS.COLLECTORS]: nextCollectors
     });
-    await this.writeCollectorFileToDisk(
-      nextCollectors.find((entry) => entry.id === collector.id) || collector,
-      items.filter((entry) => entry.collectorId === collector.id)
-    );
+    await this.writeAllCollectorsToDisk();
     return nextItem;
   }
 
@@ -523,23 +595,37 @@ export class StorageService {
     if (index === -1) {
       throw new Error("Item not found");
     }
+    const nextCollectorIds = Array.isArray(updates?.collectorIds)
+      ? updates.collectorIds.filter(Boolean)
+      : null;
+    const collectorId = nextCollectorIds && nextCollectorIds.length > 0
+      ? nextCollectorIds[0]
+      : updates?.collectorId;
     const updatedItem = {
       ...items[index],
       ...updates,
+      collectorIds:
+        nextCollectorIds && nextCollectorIds.length > 0
+          ? nextCollectorIds
+          : updates?.collectorId
+            ? [updates.collectorId]
+            : items[index].collectorIds || (items[index].collectorId ? [items[index].collectorId] : []),
+      collectorId: collectorId || items[index].collectorId,
       updatedAt: new Date().toISOString()
     };
     items[index] = updatedItem;
-    await chrome.storage.local.set({ [STORAGE_KEYS.ITEMS]: items });
     const collectors = await this.getCollectors();
-    const collector = collectors.find(
-      (entry) => entry.id === updatedItem.collectorId
+    const nextCollectors = this.recalcCollectorCounts(items, collectors).map(
+      (collector) => ({
+        ...collector,
+        updatedAt: new Date().toISOString()
+      })
     );
-    if (collector) {
-      await this.writeCollectorFileToDisk(
-        collector,
-        items.filter((entry) => entry.collectorId === collector.id)
-      );
-    }
+    await chrome.storage.local.set({
+      [STORAGE_KEYS.ITEMS]: items,
+      [STORAGE_KEYS.COLLECTORS]: nextCollectors
+    });
+    await this.writeAllCollectorsToDisk();
     return updatedItem;
   }
 
@@ -797,7 +883,14 @@ export class StorageService {
       schemaVersion: 3,
       exportedAt: new Date().toISOString(),
       collector,
-      items: items.filter((item) => item.collectorId === collectorId)
+      items: items.filter((item) => {
+        const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+          ? item.collectorIds
+          : item.collectorId
+            ? [item.collectorId]
+            : [];
+        return ids.includes(collectorId);
+      })
     };
   }
 
@@ -881,19 +974,13 @@ export class StorageService {
         nextItems.push({
           ...item,
           id: nextId,
-          collectorId: targetCollectorId
+          collectorId: targetCollectorId,
+          collectorIds: [targetCollectorId]
         });
       });
     }
 
-    const counts = new Map();
-    nextItems.forEach((item) => {
-      counts.set(item.collectorId, (counts.get(item.collectorId) || 0) + 1);
-    });
-    nextCollectors = nextCollectors.map((collector) => ({
-      ...collector,
-      itemCount: counts.get(collector.id) || 0
-    }));
+    nextCollectors = this.recalcCollectorCounts(nextItems, nextCollectors);
 
     await chrome.storage.local.set({
       [STORAGE_KEYS.COLLECTORS]: nextCollectors,
@@ -1003,9 +1090,14 @@ export class StorageService {
       const collectors = await this.getCollectors();
       const items = await this.getItems();
       for (const collector of collectors) {
-        const collectorItems = items.filter(
-          (item) => item.collectorId === collector.id
-        );
+        const collectorItems = items.filter((item) => {
+          const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+            ? item.collectorIds
+            : item.collectorId
+              ? [item.collectorId]
+              : [];
+          return ids.includes(collector.id);
+        });
         await this.writeCollectorFileToDisk(collector, collectorItems, handle);
       }
     } catch (error) {
@@ -1021,7 +1113,14 @@ export class StorageService {
     const handle = await this.restoreCollectorDirectory();
     if (!handle) return;
     try {
-      const items = allItems.filter((item) => item.collectorId === collector.id);
+      const items = allItems.filter((item) => {
+        const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+          ? item.collectorIds
+          : item.collectorId
+            ? [item.collectorId]
+            : [];
+        return ids.includes(collector.id);
+      });
       await this.writeCollectorFileToDisk(collector, items, handle);
       if (syncCollectors) {
         await this.writeAllCollectorsToDisk();
@@ -1041,15 +1140,12 @@ export class StorageService {
     const collectors = await this.getCollectors();
     const idSet = new Set(ids);
     const nextItems = items.filter((item) => !idSet.has(item.id));
-    const counts = new Map();
-    nextItems.forEach((item) => {
-      counts.set(item.collectorId, (counts.get(item.collectorId) || 0) + 1);
-    });
-    const nextCollectors = collectors.map((collector) => ({
-      ...collector,
-      itemCount: counts.get(collector.id) || 0,
-      updatedAt: new Date().toISOString()
-    }));
+    const nextCollectors = this.recalcCollectorCounts(nextItems, collectors).map(
+      (collector) => ({
+        ...collector,
+        updatedAt: new Date().toISOString()
+      })
+    );
     await chrome.storage.local.set({
       [STORAGE_KEYS.ITEMS]: nextItems,
       [STORAGE_KEYS.COLLECTORS]: nextCollectors

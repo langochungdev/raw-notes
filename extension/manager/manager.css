@@ -804,6 +804,12 @@ margin-bottom: 12px;
     min-height: 34px;
 }
 
+.item-move-select {
+    font-size: 1rem;
+    min-height: 34px;
+    padding: 6px 12px;
+}
+
 .item-action.icon-only {
     padding: 8px;
     width: 36px;

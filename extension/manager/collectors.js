@@ -1,7 +1,14 @@
 export const recalcCollectorCounts = (items, collectors) => {
   const counts = new Map();
   items.forEach((item) => {
-    counts.set(item.collectorId, (counts.get(item.collectorId) || 0) + 1);
+    const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+      ? item.collectorIds
+      : item.collectorId
+        ? [item.collectorId]
+        : [];
+    ids.forEach((id) => {
+      counts.set(id, (counts.get(id) || 0) + 1);
+    });
   });
   return collectors.map((collector) => ({
     ...collector,

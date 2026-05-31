@@ -188,6 +188,15 @@ export const renderItems = (
     itemList.appendChild(empty);
     return;
   }
+  const getItemCollectorIds = (item) => {
+    if (Array.isArray(item.collectorIds) && item.collectorIds.length > 0) {
+      return item.collectorIds;
+    }
+    if (item.collectorId) {
+      return [item.collectorId];
+    }
+    return [];
+  };
   items.forEach((item) => {
     const card = document.createElement("div");
     card.className = "item-card";
@@ -279,6 +288,35 @@ export const renderItems = (
         copyButton.textContent = "Copy";
         copyButton.addEventListener("click", () => actions.onCopyText(item));
         actionRow.appendChild(copyButton);
+      }
+      if (actions?.onAddCollector && actions?.getCollectors) {
+        const moveSelect = document.createElement("select");
+        moveSelect.className = "item-action item-move-select";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Add to...";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        moveSelect.appendChild(placeholder);
+        const collectorIds = new Set(getItemCollectorIds(item));
+        const collectors = actions.getCollectors() || [];
+        collectors
+          .filter((collector) => !collectorIds.has(collector.id))
+          .forEach((collector) => {
+            const option = document.createElement("option");
+            option.value = collector.id;
+            option.textContent = collector.name || "Collector";
+            moveSelect.appendChild(option);
+          });
+        if (moveSelect.options.length <= 1) {
+          moveSelect.disabled = true;
+        }
+        moveSelect.addEventListener("change", () => {
+          const targetId = moveSelect.value;
+          moveSelect.value = "";
+          actions.onAddCollector(item, targetId);
+        });
+        actionRow.appendChild(moveSelect);
       }
       const editButton = document.createElement("button");
       editButton.type = "button";

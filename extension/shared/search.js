@@ -26,7 +26,9 @@ export class SearchService {
 
     const payload = items.map((item) => ({
       id: item.id,
-      collectorId: item.collectorId,
+      collectorId:
+        item.collectorId ||
+        (Array.isArray(item.collectorIds) ? item.collectorIds[0] : null),
       text: item.text || "",
       note: item.note || "",
       tags: item.tags || [],

@@ -39,6 +39,7 @@ export const attachManualEntry = ({
     const optimisticItem = {
       id: tempId,
       collectorId,
+      collectorIds: [collectorId],
       text,
       note,
       tags,
@@ -56,6 +57,7 @@ export const attachManualEntry = ({
     try {
       const saved = await storage.saveItem({
         collectorId,
+        collectorIds: [collectorId],
         text,
         note,
         tags,

@@ -3,6 +3,7 @@ export const attachSelectionHandlers = ({
   selectAllInput,
   deleteSelectedButton,
   itemsCount,
+  bulkMoveSelect,
   getCurrentResults,
   selectedIds,
   getAllItems,
@@ -14,12 +15,35 @@ export const attachSelectionHandlers = ({
   renderCollectors,
   refreshItems,
   showUndoToast,
+  showNotice,
   updateSelectionState,
   storage,
   logger,
   doc
 }) => {
   let pendingDelete = null;
+
+  const updateBulkMoveSelect = () => {
+    if (!bulkMoveSelect) return;
+    const hasSelection = selectedIds.size > 0;
+    bulkMoveSelect.classList.toggle("is-hidden", !hasSelection);
+    bulkMoveSelect.disabled = !hasSelection;
+    if (!hasSelection) return;
+    const collectors = getAllCollectors();
+    bulkMoveSelect.innerHTML = "";
+    const placeholder = doc.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Move selected...";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    bulkMoveSelect.appendChild(placeholder);
+    collectors.forEach((collector) => {
+      const option = doc.createElement("option");
+      option.value = collector.id;
+      option.textContent = collector.name || "Collector";
+      bulkMoveSelect.appendChild(option);
+    });
+  };
 
   const clearPendingDelete = () => {
     if (!pendingDelete) return;
@@ -56,6 +80,7 @@ export const attachSelectionHandlers = ({
       currentResults.forEach((item) => selectedIds.delete(item.id));
     }
     refreshItems();
+    updateBulkMoveSelect();
   });
 
   itemList.addEventListener("change", (event) => {
@@ -74,6 +99,59 @@ export const attachSelectionHandlers = ({
       getCurrentResults(),
       selectedIds
     );
+    updateBulkMoveSelect();
+  });
+
+  bulkMoveSelect?.addEventListener("change", async () => {
+    const targetId = bulkMoveSelect.value;
+    bulkMoveSelect.value = "";
+    if (!targetId) return;
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    const snapshot = {
+      items: [...getAllItems()],
+      collectors: [...getAllCollectors()]
+    };
+
+    const nextItems = getAllItems().map((item) =>
+      selectedIds.has(item.id)
+        ? {
+            ...item,
+            collectorIds: [targetId],
+            collectorId: targetId,
+            updatedAt: new Date().toISOString()
+          }
+        : item
+    );
+
+    setAllItems(nextItems);
+    setAllCollectors(recalcCollectorCounts(nextItems, getAllCollectors()));
+    selectedIds.clear();
+    await searchService.index(nextItems);
+    renderCollectors();
+    refreshItems();
+    updateBulkMoveSelect();
+
+    try {
+      await Promise.all(ids.map((id) =>
+        storage.updateItem(id, {
+          collectorIds: [targetId],
+          collectorId: targetId
+        })
+      ));
+    } catch (error) {
+      setAllItems(snapshot.items);
+      setAllCollectors(snapshot.collectors);
+      await searchService.index(snapshot.items);
+      renderCollectors();
+      refreshItems();
+      updateBulkMoveSelect();
+      showNotice?.(doc, "Move failed");
+      await logger.log("ERROR", "storage", "Bulk move failed", {
+        message: error.message || "move failed"
+      });
+    }
   });
 
   deleteSelectedButton.addEventListener("click", async () => {
@@ -119,4 +197,6 @@ export const attachSelectionHandlers = ({
 
     document.addEventListener("pointerdown", handleOutsideClick, true);
   });
+
+  updateBulkMoveSelect();
 };
