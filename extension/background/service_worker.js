@@ -169,6 +169,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true, collectors };
     }
 
+    if (message?.type === "LOG") {
+      await logger.log(
+        message.level || "INFO",
+        message.category || "system",
+        message.message || "",
+        message.data || {}
+      );
+      return { ok: true };
+    }
+
     if (message?.type === "HAS_COLLECTOR_DIR") {
       const handle = await storageService.restoreCollectorDirectory();
       return { ok: true, hasDir: Boolean(handle) };

@@ -33,5 +33,15 @@
     "toggle-sidebar": {
       "description": "Toggle sidebar notes"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shared/*.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
