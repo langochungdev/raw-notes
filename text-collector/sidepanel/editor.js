@@ -102,8 +102,12 @@ export const createEditorManager = ({
       });
     }
     if (focusTitle) {
-      fileNameInput.focus();
-      fileNameInput.select();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          fileNameInput.focus();
+          fileNameInput.select();
+        });
+      });
     }
   };
 

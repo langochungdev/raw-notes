@@ -1,17 +1,17 @@
 :root {
     color-scheme: dark;
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: #0f0f0f;
-    color: #f5f5f5;
-    --bg: #0f0f0f;
-    --panel: #111111;
-    --panel-2: #151515;
-    --border: #262626;
-    --text: #f5f5f5;
-    --muted: #9ca3af;
-    --muted-2: #737373;
-    --accent: #ba7517;
-    --secondary: #1f1f1f;
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    background: #282725;
+    color: #f1f0ee;
+    --bg: #282725;
+    --panel: #2f2d2a;
+    --panel-2: #383634;
+    --border: #4a4845;
+    --text: #f1f0ee;
+    --muted: #9e9c99;
+    --muted-2: #c7c3be;
+    --accent: #d9a441;
+    --secondary: #3e3c39;
 }
 
 * {
@@ -28,12 +28,12 @@ body {
 button,
 input {
     font: inherit;
+    color: inherit;
 }
 
 button {
     border: 0;
     background: transparent;
-    color: inherit;
     cursor: pointer;
 }
 
@@ -54,6 +54,10 @@ button {
 
 .hidden {
     display: none !important;
+}
+
+.save-status {
+    display: none;
 }
 
 .state-empty {
@@ -90,14 +94,14 @@ button {
     padding: 0 12px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #171717;
+    background: var(--panel-2);
     color: var(--text);
     transition: background-color 0.16s ease, border-color 0.16s ease;
 }
 
 .primary-button {
     min-width: 120px;
-    background: #1a1a1a;
+    background: var(--panel-2);
 }
 
 @media (hover: hover) {
@@ -106,8 +110,8 @@ button {
     .icon-button:hover,
     .back-button:hover,
     .vault-switch:hover {
-        background: #202020;
-        border-color: #343434;
+        background: #403e3b;
+        border-color: #5a5753;
     }
 }
 
@@ -182,18 +186,18 @@ button {
     padding: 0 10px;
     border-radius: 12px;
     font-size: 14px;
-    color: #e5e7eb;
+    color: var(--text);
     position: relative;
 }
 
 .tree-row.drag-over {
-    background: #1b1b1b;
-    outline: 1px dashed #3a3a3a;
+    background: #32312f;
+    outline: 1px dashed #4a4845;
 }
 
 .tree-row.drag-source {
-    background: #131313;
-    outline: 1px solid #2a2a2a;
+    background: #2f2d2a;
+    outline: 1px solid #4a4845;
 }
 
 .tree-row.drag-over-line::after {
@@ -202,13 +206,13 @@ button {
     left: 10px;
     right: 10px;
     height: 2px;
-    background: #3a3a3a;
+    background: #4a4845;
     top: var(--drop-line-offset, 2px);
 }
 
 .tree-row.drag-over-inside {
-    background: #1c1a18;
-    outline: 1px solid #3a3a3a;
+    background: #32312f;
+    outline: 1px solid #4a4845;
 }
 
 .tree-dragging .tree-row {
@@ -216,7 +220,7 @@ button {
 }
 
 .tree-row:hover {
-    background: #151515;
+    background: #353330;
 }
 
 .tree-row.active {
@@ -238,7 +242,7 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #a3a3a3;
+    color: var(--muted);
     flex: 0 0 auto;
 }
 
@@ -274,7 +278,7 @@ button {
 }
 
 .tree-icon.file {
-    color: #9ca3af;
+    color: var(--muted);
 }
 
 .tree-label {
@@ -295,7 +299,7 @@ button {
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    color: #a3a3a3;
+    color: var(--muted);
     opacity: 0;
     pointer-events: none;
 }
@@ -304,7 +308,7 @@ button {
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    color: #8b8b8b;
+    color: var(--muted-2);
     opacity: 0.7;
     cursor: grab;
     user-select: none;
@@ -324,9 +328,9 @@ button {
     gap: 8px;
     padding: 6px 10px;
     border-radius: 10px;
-    background: rgba(20, 20, 20, 0.92);
-    border: 1px solid #2a2a2a;
-    color: #e5e7eb;
+    background: rgba(47, 45, 42, 0.92);
+    border: 1px solid #4a4845;
+    color: var(--text);
     font-size: 13px;
     pointer-events: none;
     z-index: 9999;
@@ -339,7 +343,7 @@ button {
     justify-content: center;
     width: 18px;
     height: 18px;
-    color: #a3a3a3;
+    color: var(--muted);
 }
 
 .tree-drag-ghost-icon svg {
@@ -360,7 +364,7 @@ button {
     height: 30px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: #101010;
+    background: var(--panel);
     color: var(--text);
     padding: 0 8px;
     font-size: 14px;
@@ -379,7 +383,7 @@ button {
 
 .tree-children {
     margin-left: 18px;
-    border-left: 1px solid #222;
+    border-left: 1px solid var(--border);
     padding-left: 8px;
 }
 
@@ -404,8 +408,8 @@ button {
     position: sticky;
     top: 0;
     z-index: 20;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(15, 15, 15, 0.82);
+    border-bottom: 1px solid var(--border);
+    background: rgba(40, 39, 37, 0.92);
     backdrop-filter: blur(8px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
@@ -445,7 +449,7 @@ button {
     height: 34px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #101010;
+    background: var(--panel);
     color: var(--text);
     padding: 0 12px;
     font-size: 1rem;
@@ -453,7 +457,7 @@ button {
 }
 
 .file-name-input::placeholder {
-    color: #6b7280;
+    color: var(--muted);
 }
 
 .editor-wrap {
@@ -470,7 +474,7 @@ button {
     padding: 0 12px;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: #171717;
+    background: var(--panel-2);
     color: var(--text);
     font-size: 12px;
     font-weight: 600;
@@ -493,8 +497,8 @@ button {
 
 @media (hover: hover) {
     .mode-button:hover {
-        background: #202020;
-        border-color: #343434;
+        background: #403e3b;
+        border-color: #5a5753;
     }
 }
 
@@ -503,7 +507,7 @@ button {
     min-height: 0;
     border-radius: 10px;
     border: 0;
-    background: #0f0f0f;
+    background: var(--bg);
     color: var(--text);
     padding: 0;
     font-size: 16px;
@@ -520,7 +524,7 @@ button {
     height: 100%;
     border-radius: 10px;
     border: 0;
-    background: #0f0f0f;
+    background: var(--bg);
     color: var(--text);
     padding: 12px;
     font-size: 1rem;
@@ -533,7 +537,6 @@ button {
 .editor-body:focus-within {
     outline: none;
 }
-
 
 .editor-body .ProseMirror {
     min-height: calc(100vh - 220px);
@@ -554,19 +557,19 @@ button {
 
 .editor-body th,
 .editor-body td {
-    border: 1px solid #2a2a2a;
+    border: 1px solid var(--border);
     padding: 8px 10px;
     text-align: left;
 }
 
 .editor-body th {
-    background: #151515;
+    background: var(--panel-2);
     font-weight: 600;
 }
 
 .editor-body:empty::before {
     content: attr(data-placeholder);
-    color: #6b7280;
+    color: var(--muted);
 }
 
 .slash-menu,
@@ -578,23 +581,27 @@ button {
     padding: 2px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: #111;
+    background: var(--panel);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
 
-    .tree-drag {
-        width: 30px;
-        height: 30px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        color: var(--muted-2);
-        cursor: grab;
-    }
+.slash-menu .tree-drag,
+.node-menu .tree-drag,
+.tree-menu .tree-drag {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: var(--muted-2);
+    cursor: grab;
+}
 
-    .tree-drag:active {
-        cursor: grabbing;
-    }
+.slash-menu .tree-drag:active,
+.node-menu .tree-drag:active,
+.tree-menu .tree-drag:active {
+    cursor: grabbing;
 }
 
 .slash-menu button,
@@ -616,16 +623,16 @@ button {
 .slash-menu button:hover,
 .node-menu button:hover,
 .tree-menu button:hover {
-    background: #1b1b1b;
+    background: #353330;
 }
 
 .slash-menu button.active {
-    background: #1b1b1b;
+    background: #353330;
 }
 
 .node-menu button.danger,
 .tree-menu button.danger {
-    color: #fca5a5;
+    color: #f0b5b1;
 }
 
 .share-menu {
@@ -635,7 +642,7 @@ button {
     padding: 10px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: #111;
+    background: var(--panel);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
@@ -653,7 +660,7 @@ button {
     height: 32px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: #0f0f0f;
+    background: var(--panel);
     color: var(--text);
     padding: 0 10px;
     font-size: 12px;
@@ -663,7 +670,7 @@ button {
     height: 32px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: #171717;
+    background: var(--panel-2);
     color: var(--text);
     padding: 0 10px;
     font-size: 12px;
@@ -671,8 +678,8 @@ button {
 }
 
 .share-action.danger {
-    border-color: #7f1d1d;
-    color: #fca5a5;
+    border-color: #7a3a36;
+    color: #f0b5b1;
 }
 
 .share-status {
@@ -683,13 +690,13 @@ button {
 
 @media (hover: hover) {
     .tree-label:hover {
-        color: #fff;
+        color: var(--text);
     }
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: #2a2a2a transparent;
+    scrollbar-color: #4a4845 #2f2d2a;
 }
 
 *::-webkit-scrollbar {
@@ -698,14 +705,14 @@ button {
 }
 
 *::-webkit-scrollbar-thumb {
-    background: #2a2a2a;
+    background: #4a4845;
     border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-    background: #353535;
+    background: #5a5753;
 }
 
 *::-webkit-scrollbar-track {
-    background: transparent;
+    background: #2f2d2a;
 }

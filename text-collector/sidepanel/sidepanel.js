@@ -896,6 +896,15 @@ const pickVault = async (options = {}) => {
       kind: handle.kind || ""
     });
   }
+  const permission = await handle.requestPermission({ mode: "readwrite" });
+  await logger.log("INFO", "vault", "Vault permission request", {
+    permission
+  });
+  if (permission !== "granted") {
+    setEmptyState("Ket noi lai vault", "Xac nhan thu muc");
+    setView("empty");
+    return;
+  }
   await editorManager.clearCurrentFile();
   app.vaultHandle = handle;
   app.rootHandle = handle;
@@ -976,6 +985,11 @@ const createRootFile = async () => {
   await addToOrderEnd("", getEntryName(app.activePath));
   renderSaveStatus();
   await tree.renderTree();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      editorManager.focusFileNameInput?.();
+    });
+  });
 };
 
 const createRootFolder = async () => {
