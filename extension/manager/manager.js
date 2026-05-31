@@ -29,7 +29,7 @@ const newCollectorButton = document.getElementById("new-collector");
 const newCollectorNameInput = document.getElementById("new-collector-name");
 const collectorSelectToggle = document.getElementById("collector-select-toggle");
 const collectorDeleteSelected = document.getElementById("collector-delete-selected");
-const collectorSelectAllInput = document.getElementById("collector-select-all");
+
 const pickFolderButton = document.getElementById("pick-folder");
 const settingsModal = document.getElementById("settings-modal");
 const settingsCloseButton = document.getElementById("settings-close");
@@ -128,24 +128,18 @@ const DEFAULT_SETTINGS = {
 };
 let settingsState = { ...DEFAULT_SETTINGS };
 
-const updateCollectorSelectAllState = () => {
-  if (!collectorSelectAllInput) return;
-  const label = collectorSelectAllInput.closest(".select-all");
-  if (label) {
-    label.classList.toggle(
-      "hidden",
-      !isCollectorSelectMode || allCollectors.length < 2
-    );
+const updateCollectorSelectionState = () => {
+  if (isCollectorSelectMode) {
+    const selectedCount = selectedCollectorIds.size;
+    exportButton.classList.toggle("is-selection", selectedCount > 0);
+    exportBadge.classList.toggle("hidden", selectedCount === 0);
+    exportBadge.textContent = selectedCount > 0 ? String(selectedCount) : "";
+  } else {
+    const itemSelectedCount = selectedIds.size;
+    exportButton.classList.toggle("is-selection", itemSelectedCount > 0);
+    exportBadge.classList.toggle("hidden", itemSelectedCount === 0);
+    exportBadge.textContent = itemSelectedCount > 0 ? String(itemSelectedCount) : "";
   }
-  if (!isCollectorSelectMode) {
-    collectorSelectAllInput.checked = false;
-    collectorSelectAllInput.indeterminate = false;
-    return;
-  }
-  const total = allCollectors.length;
-  const selected = allCollectors.filter((c) => selectedCollectorIds.has(c.id)).length;
-  collectorSelectAllInput.indeterminate = selected > 0 && selected < total;
-  collectorSelectAllInput.checked = total > 0 && selected === total;
 };
 
 const readSettings = async () => {
@@ -403,11 +397,7 @@ const collectorManager = createCollectorManager({
     } else {
       selectedCollectorIds.add(id);
     }
-    collectorDeleteSelected.classList.toggle(
-      "hidden",
-      selectedCollectorIds.size === 0
-    );
-    updateCollectorSelectAllState();
+    updateCollectorSelectionState();
     collectorManager.renderCollectorList();
   },
   getActiveCollectorId: () => activeCollectorId,
@@ -420,7 +410,7 @@ const collectorManager = createCollectorManager({
     allCollectors = collectors;
     updateSearchPlaceholder();
     updateSearchCollectorOptions();
-    updateCollectorSelectAllState();
+    updateCollectorSelectionState();
   },
   loadItems: itemManager.loadItems,
   onActiveCollectorChange: () => updateSearchPlaceholder()
@@ -557,37 +547,32 @@ collectorSelectToggle.addEventListener("click", () => {
   collectorSelectToggle.classList.toggle("active", isCollectorSelectMode);
   if (!isCollectorSelectMode) {
     selectedCollectorIds.clear();
-    collectorDeleteSelected.classList.add("hidden");
   }
-  updateCollectorSelectAllState();
+  newCollectorButton.classList.toggle("hidden", isCollectorSelectMode);
+  collectorDeleteSelected.classList.toggle("hidden", !isCollectorSelectMode);
+  
+  updateCollectorSelectionState();
   collectorManager.renderCollectorList();
 });
 
-collectorSelectAllInput?.addEventListener("change", () => {
-  if (!isCollectorSelectMode) return;
-  if (collectorSelectAllInput.checked) {
-    allCollectors.forEach((collector) => selectedCollectorIds.add(collector.id));
-  } else {
-    selectedCollectorIds.clear();
-  }
-  collectorDeleteSelected.classList.toggle(
-    "hidden",
-    selectedCollectorIds.size === 0
-  );
-  updateCollectorSelectAllState();
-  collectorManager.renderCollectorList();
-});
+
 
 collectorDeleteSelected.addEventListener("click", async () => {
-  if (selectedCollectorIds.size === 0) return;
-  const ok = window.confirm("Delete selected collectors?");
-  if (!ok) return;
-  const ids = Array.from(selectedCollectorIds);
-  for (const id of ids) {
-    await storage.deleteCollector(id);
+  if (selectedCollectorIds.size === 0) {
+    if (allCollectors.length === 0) return;
+    const ok = window.confirm("Xóa tất cả các collector?");
+    if (!ok) return;
+    const ids = allCollectors.map(c => c.id);
+    for (const id of ids) {
+      await storage.deleteCollector(id);
+    }
+  } else {
+    const ids = Array.from(selectedCollectorIds);
+    for (const id of ids) {
+      await storage.deleteCollector(id);
+    }
   }
   selectedCollectorIds.clear();
-  collectorDeleteSelected.classList.add("hidden");
   await reloadAllData();
 });
 

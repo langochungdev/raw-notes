@@ -112,8 +112,40 @@ export const renderCollectors = (
     const count = document.createElement("div");
     count.className = "collector-count";
     count.textContent = `${collector.itemCount || 0}`;
+    
+    const rightActions = document.createElement("div");
+    rightActions.style.display = "flex";
+    rightActions.style.alignItems = "center";
+    rightActions.style.gap = "8px";
+    rightActions.style.marginLeft = "auto";
+    rightActions.appendChild(count);
+    
+    if (selectionMode && actions?.onDelete) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "icon-action danger-icon";
+      deleteBtn.style.width = "26px";
+      deleteBtn.style.height = "26px";
+      deleteBtn.style.padding = "4px";
+      deleteBtn.setAttribute("aria-label", "Delete collector");
+      deleteBtn.innerHTML = `
+        <span class="button-icon" aria-hidden="true" style="width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" style="width: 14px; height: 14px;">
+            <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </span>
+      `;
+      deleteBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        actions.onDelete(collector);
+      });
+      rightActions.appendChild(deleteBtn);
+    }
+    
     card.appendChild(info);
-    card.appendChild(count);
+    card.appendChild(rightActions);
     card.addEventListener("click", (event) => {
       if (event.detail > 1) return;
       if (isRenaming) return;
