@@ -27,9 +27,39 @@ export const renderCollectors = (
         actions?.onToggleSelect?.(collector.id);
       });
     }
+    const swatchButton = document.createElement("button");
+    swatchButton.type = "button";
+    swatchButton.className = "collector-color-button";
     const swatch = document.createElement("span");
     swatch.className = "collector-color";
     swatch.style.background = collector.color || "#d9a441";
+    const colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.className = "collector-color-input";
+    colorInput.value = collector.color || "#d9a441";
+    colorInput.addEventListener("input", (event) => {
+      const value = event.target?.value || "";
+      if (value) {
+        swatch.style.background = value;
+      }
+    });
+    colorInput.addEventListener("change", (event) => {
+      const value = event.target?.value || "";
+      actions?.onColor?.(collector, value);
+    });
+    colorInput.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+    swatchButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (typeof colorInput.showPicker === "function") {
+        colorInput.showPicker();
+      } else {
+        colorInput.click();
+      }
+    });
+    swatchButton.appendChild(swatch);
+    swatchButton.appendChild(colorInput);
     const name = document.createElement("div");
     name.className = "collector-name";
     name.textContent = collector.name;
@@ -77,7 +107,7 @@ export const renderCollectors = (
     if (selectInput) {
       info.appendChild(selectInput);
     }
-    info.appendChild(swatch);
+    info.appendChild(swatchButton);
     info.appendChild(name);
     const count = document.createElement("div");
     count.className = "collector-count";

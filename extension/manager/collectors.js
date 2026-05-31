@@ -52,7 +52,7 @@ export const createCollectorManager = ({
       onToggleSelect: (id) => toggleCollectorSelected?.(id),
       onRename: (collector, nextName) => handleCollectorRename(collector, nextName),
       onDelete: (collector) => handleCollectorDelete(collector),
-      onColor: (collector) => handleCollectorColor(collector)
+      onColor: (collector, nextColor) => handleCollectorColor(collector, nextColor)
     });
   };
 
@@ -64,13 +64,20 @@ export const createCollectorManager = ({
     return withHash.toLowerCase();
   };
 
-  const handleCollectorColor = async (collector) => {
-    const input = window.prompt("Collector color (hex)", collector.color || "");
-    if (input === null) return;
-    const color = normalizeColor(input);
+  const handleCollectorColor = async (collector, nextColor) => {
+    const color = normalizeColor(nextColor);
     if (!color || color === collector.color) return;
-    await storage.updateCollector(collector.id, { color });
-    await loadCollectors();
+    const nextCollectors = getCollectors().map((entry) =>
+      entry.id === collector.id
+        ? { ...entry, color, updatedAt: new Date().toISOString() }
+        : entry
+    );
+    setCollectors(nextCollectors);
+    try {
+      await storage.updateCollector(collector.id, { color });
+    } catch (error) {
+      await loadCollectors();
+    }
   };
 
   const handleCollectorRename = async (collector, nextName) => {

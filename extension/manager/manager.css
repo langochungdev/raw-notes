@@ -585,6 +585,35 @@ margin-bottom: 12px;
     border: 1px solid #4a4845;
 }
 
+.collector-color-button {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid #4a4845;
+    background: #2f2d2a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.collector-color-button .collector-color {
+    width: 12px;
+    height: 12px;
+    border: none;
+}
+
+.collector-color-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
 .collector-card.active {
     background: #3e3c39;
     border-color: #3e3c39;
