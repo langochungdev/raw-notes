@@ -10,7 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind with Typography plugin for Markdown rendering -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 
     <style type="text/tailwindcss">
         body {
@@ -30,11 +31,29 @@
             letter-spacing: -0.04em;
             line-height: 0.95;
         }
+
+        /* Custom scrollbar for popup */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
     </style>
 
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Marked library for parsing Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body class="h-full">
@@ -52,16 +71,58 @@
         function App() {
             const [videoUrl, setVideoUrl] = useState(videos[0].url);
             const [uiVisible, setUiVisible] = useState(true);
+            const [showRelease, setShowRelease] = useState(false);
+            const [releaseContent, setReleaseContent] = useState("");
+            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+            const openReleasePopup = async (pushState = true) => {
+                setShowRelease(true);
+                if (pushState) window.history.pushState(null, '', '/release');
+
+                try {
+                    const res = await fetch('./release.md');
+                    if (res.ok) {
+                        const text = await res.text();
+                        setReleaseContent(window.marked.parse(text));
+                    } else {
+                        setReleaseContent("<p class='text-red-400'>Lỗi: Không tìm thấy file release.md (404).</p>");
+                    }
+                } catch (e) {
+                    setReleaseContent("<p class='text-red-400'>Lỗi CORS. Trình duyệt chặn fetch local. Hãy chạy bằng Live Server.</p>");
+                }
+            };
+
+            const closeReleasePopup = () => {
+                setShowRelease(false);
+                window.history.pushState(null, '', '/');
+            };
 
             useEffect(() => {
                 const handleKeyDown = (e) => {
-                    if (e.key === 'Escape' && !uiVisible) {
-                        setUiVisible(true);
+                    if (e.key === 'Escape') {
+                        if (showRelease) closeReleasePopup();
+                        else if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+                        else if (!uiVisible) setUiVisible(true);
                     }
                 };
                 window.addEventListener('keydown', handleKeyDown);
                 return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [uiVisible]);
+            }, [uiVisible, showRelease, isMobileMenuOpen]);
+
+            useEffect(() => {
+                const handlePopState = () => {
+                    if (window.location.pathname === '/release') {
+                        openReleasePopup(false);
+                    } else {
+                        setShowRelease(false);
+                    }
+                };
+
+                window.addEventListener('popstate', handlePopState);
+                if (window.location.pathname === '/release') openReleasePopup(false);
+
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
 
             return (
                 <section className="relative h-screen w-full overflow-hidden bg-black">
@@ -76,13 +137,13 @@
                     />
 
                     <div
-                        className={`absolute inset-0 z-20 transition-opacity duration-500 ${uiVisible ? 'opacity-0 pointer-events-none' : 'opacity-100 cursor-pointer'
+                        className={`absolute inset-0 z-20 ${uiVisible ? 'opacity-0 pointer-events-none' : 'opacity-100 cursor-pointer'
                             }`}
                         onClick={() => setUiVisible(true)}
                     >
                     </div>
 
-                    <div className={`relative h-full w-full z-10 transition-opacity duration-700 ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <div className={`relative h-full w-full z-10 ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
 
                         <nav className="absolute z-20 px-6 md:px-10 pt-6 top-0 left-0 right-0 flex items-center justify-between gap-4 pointer-events-auto">
@@ -94,51 +155,87 @@
                             </div>
 
                             <div className="hidden md:flex items-center gap-1 bg-neutral-900/90 backdrop-blur rounded-full px-3 py-2">
-                                {["highlight", "search", "obsidian", "export"].map(item => (
-                                    <a key={item} href="#" className="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">
-                                        {item}
-                                    </a>
-                                ))}
+                                {["contact", "release log", "socials"].map(item => {
+                                    let href = "#";
+                                    let target = undefined;
+                                    let rel = undefined;
+
+                                    if (item === "contact") {
+                                        href = "https://langochung.me";
+                                        target = "_blank";
+                                        rel = "noopener noreferrer";
+                                    } else if (item === "release log") {
+                                        href = "/release";
+                                    }
+
+                                    return (
+                                        <a
+                                            key={item}
+                                            href={href}
+                                            target={target}
+                                            rel={rel}
+                                            onClick={(e) => {
+                                                if (item === "release log") {
+                                                    e.preventDefault();
+                                                    openReleasePopup();
+                                                }
+                                            }}
+                                            className="text-neutral-300 hover:text-white text-sm px-5 py-2 rounded-full"
+                                        >
+                                            {item}
+                                        </a>
+                                    );
+                                })}
                             </div>
 
-                            <button className="bg-white text-black text-sm font-normal rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors">
-                                install now
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button className="hidden md:block bg-white text-black text-sm font-normal rounded-full px-6 py-3 hover:bg-neutral-200">
+                                    install now
+                                </button>
+                                <button
+                                    className="md:hidden flex items-center justify-center bg-neutral-900/90 backdrop-blur rounded-full w-11 h-11 text-white"
+                                    onClick={() => setIsMobileMenuOpen(true)}
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </button>
+                            </div>
                         </nav>
 
-                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-4 md:left-10 top-[18%]">capture</h1>
-                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] right-4 md:right-10 top-[38%]">your</h1>
-                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-[18%] md:left-[28%] top-[58%]">notes</h1>
+                        <h1 className="hero-title absolute text-white font-medium text-[16vw] md:text-[13vw] left-4 md:left-10 top-[22%] md:top-[18%]">capture</h1>
+                        <h1 className="hero-title absolute text-white font-medium text-[16vw] md:text-[13vw] right-4 md:right-10 top-[38%]">your</h1>
+                        <h1 className="hero-title absolute text-white font-medium text-[16vw] md:text-[13vw] left-[15%] md:left-[28%] top-[54%] md:top-[58%]">notes</h1>
 
-                        <p className="absolute left-6 md:left-10 top-[46%] max-w-[240px] text-[15px] leading-snug text-white/90">
+                        <p className="absolute left-6 md:left-10 top-[68%] md:top-[46%] max-w-[220px] md:max-w-[240px] text-[13px] md:text-[15px] leading-snug text-white/90">
                             highlight text on any website, save to collector, and sync directly to your obsidian vault.
                         </p>
 
-                        <div className="absolute right-6 md:right-24 top-[14%] flex flex-col items-end">
-                            <div className="flex items-center gap-3 justify-end">
+                        <div className="absolute right-4 md:right-24 top-[12%] md:top-[14%] flex flex-col items-end">
+                            <div className="flex items-center gap-2 md:gap-3 justify-end">
                                 <div className="hidden md:block h-px w-24 bg-white/40 rotate-[20deg]"></div>
-                                <span className="text-4xl md:text-5xl font-medium tracking-tight">&lt; 10ms</span>
+                                <span className="text-3xl md:text-5xl font-medium tracking-tight">&lt; 10ms</span>
                             </div>
-                            <span className="text-xs md:text-sm text-white/70 mt-1 text-right">search speed</span>
+                            <span className="text-[10px] md:text-sm text-white/70 mt-1 text-right">search speed</span>
                         </div>
 
-                        <div className="absolute left-6 md:left-20 bottom-24 md:bottom-28">
-                            <div className="flex items-center gap-3">
-                                <span className="text-4xl md:text-5xl font-medium tracking-tight">7kb</span>
+                        <div className="absolute left-4 md:left-20 bottom-24 md:bottom-28">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <span className="text-3xl md:text-5xl font-medium tracking-tight">7kb</span>
                                 <div className="hidden md:block h-px w-24 bg-white/40 rotate-[-20deg]"></div>
                             </div>
-                            <span className="text-xs md:text-sm text-white/70 mt-1">minisearch index</span>
+                            <span className="text-[10px] md:text-sm text-white/70 mt-1">minisearch index</span>
                         </div>
 
-                        <div className="absolute right-6 md:right-20 bottom-16 md:bottom-20 flex flex-col items-end">
-                            <div className="flex items-center gap-3 justify-end">
+                        <div className="absolute right-4 md:right-20 bottom-24 md:bottom-20 flex flex-col items-end">
+                            <div className="flex items-center gap-2 md:gap-3 justify-end">
                                 <div className="hidden md:block h-px w-24 bg-white/40 rotate-[-20deg]"></div>
-                                <span className="text-4xl md:text-5xl font-medium tracking-tight">100%</span>
+                                <span className="text-3xl md:text-5xl font-medium tracking-tight">100%</span>
                             </div>
-                            <span className="text-xs md:text-sm text-white/70 mt-1 text-right">offline capable</span>
+                            <span className="text-[10px] md:text-sm text-white/70 mt-1 text-right">offline capable</span>
                         </div>
 
-                        <div className="absolute left-6 md:left-10 bottom-6 md:bottom-8 flex items-center gap-2 pointer-events-auto z-30">
+                        <div className="absolute left-4 md:left-10 bottom-6 md:bottom-8 flex items-center gap-2 pointer-events-auto z-30">
                             {videos.map(v => (
                                 <button
                                     key={v.id}
@@ -146,14 +243,93 @@
                                         setVideoUrl(v.url);
                                         setUiVisible(false);
                                     }}
-                                    className={`relative w-[72px] h-[44px] rounded-lg border ${videoUrl === v.url ? 'border-white' : 'border-white/20 hover:border-white/50'} overflow-hidden flex items-center justify-center bg-white/5 backdrop-blur-sm transition-all group`}
+                                    className={`relative w-[72px] h-[44px] rounded-lg border ${videoUrl === v.url ? 'border-white' : 'border-white/20 hover:border-white/50'} overflow-hidden flex items-center justify-center bg-white/5 backdrop-blur-sm group`}
                                 >
                                     <span className="text-[10px] text-white/90 z-10">{v.name}</span>
-                                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-0"></div>
+                                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 z-0"></div>
                                 </button>
                             ))}
                         </div>
+
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto z-30">
+                            <a href="https://langochung.me" target="_blank" rel="noopener noreferrer" className="text-[10px] md:text-xs text-white/30 hover:text-white transition-colors tracking-wide">
+                                langochung.me
+                            </a>
+                        </div>
                     </div>
+
+                    {isMobileMenuOpen && (
+                        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-xl pointer-events-auto">
+                            <div className="flex justify-end p-6">
+                                <button
+                                    className="text-white/50 hover:text-white p-2"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="flex flex-col items-center justify-center flex-1 gap-8">
+                                {["contact", "release log", "socials"].map(item => {
+                                    let href = "#";
+                                    let target = undefined;
+                                    let rel = undefined;
+
+                                    if (item === "contact") {
+                                        href = "https://langochung.me";
+                                        target = "_blank";
+                                        rel = "noopener noreferrer";
+                                    } else if (item === "release log") {
+                                        href = "/release";
+                                    }
+
+                                    return (
+                                        <a
+                                            key={item}
+                                            href={href}
+                                            target={target}
+                                            rel={rel}
+                                            onClick={(e) => {
+                                                setIsMobileMenuOpen(false);
+                                                if (item === "release log") {
+                                                    e.preventDefault();
+                                                    openReleasePopup();
+                                                }
+                                            }}
+                                            className="text-2xl text-white font-medium tracking-tight"
+                                        >
+                                            {item}
+                                        </a>
+                                    );
+                                })}
+                                <button className="mt-8 bg-white text-black text-lg font-medium rounded-full px-10 py-4 hover:bg-neutral-200">
+                                    install now
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {showRelease && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={closeReleasePopup}></div>
+                            <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                                <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-neutral-900/50 backdrop-blur-sm">
+                                    <h2 className="text-lg font-medium text-white tracking-tight">release log</h2>
+                                    <button onClick={closeReleasePopup} className="text-white/50 hover:text-white p-1">
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div
+                                    className="p-6 sm:p-8 overflow-y-auto prose prose-invert prose-sm sm:prose-base max-w-none prose-a:text-white hover:prose-a:text-neutral-300 prose-headings:font-medium prose-headings:tracking-tight"
+                                    dangerouslySetInnerHTML={{ __html: releaseContent }}
+                                >
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </section>
             );
         }
