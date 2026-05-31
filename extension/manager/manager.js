@@ -549,13 +549,12 @@ document.addEventListener("pointerdown", (event) => {
   }
   
   if (isCollectorSelectMode) {
-    if (
-      !collectorList.contains(event.target) &&
-      !collectorSelectToggle.contains(event.target) &&
-      !collectorDeleteSelected.contains(event.target) &&
-      !exportButton.contains(event.target) &&
-      !(exportMenu && exportMenu.contains(event.target))
-    ) {
+    const isCollectorAction = event.target.closest('.collector-item');
+    const isToggleAction = collectorSelectToggle.contains(event.target);
+    const isDeleteSelectedAction = collectorDeleteSelected.contains(event.target);
+    const isExportAction = exportButton.contains(event.target) || (exportMenu && exportMenu.contains(event.target));
+
+    if (!isCollectorAction && !isToggleAction && !isDeleteSelectedAction && !isExportAction) {
       closeCollectorSelectMode();
     }
   }

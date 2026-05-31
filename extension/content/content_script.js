@@ -559,59 +559,99 @@
     return wrapRangeWithHighlights(range, item.id, color);
   };
 
-  const buildTextIndex = () => {
-    const root = getRootNode();
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const entries = [];
-    let text = "";
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (!node.textContent) continue;
-      const start = text.length;
-      text += node.textContent;
-      const end = text.length;
-      entries.push({ node, start, end });
-      text += "\n";
-    }
-    return { text, entries };
-  };
+  const findRangeWhitespaceAgnostic = (item, location) => {
+    const needleRaw = sanitizeSelection(item.text || "");
+    if (!needleRaw) return null;
 
-  const findRangeByContext = (item, location) => {
-    const needle = sanitizeSelection(item.text || "");
-    if (!needle) return null;
-    const index = buildTextIndex();
-    const text = index.text;
-    let offset = 0;
-    while (true) {
-      const found = text.indexOf(needle, offset);
-      if (found === -1) return null;
-      const before = location?.context?.before || "";
-      const after = location?.context?.after || "";
-      const beforeStart = Math.max(0, found - before.length);
-      const beforeText = text.slice(beforeStart, found);
-      const afterText = text.slice(found + needle.length, found + needle.length + after.length);
-      const beforeOk = !before || beforeText.endsWith(before);
-      const afterOk = !after || afterText.startsWith(after);
-      if (beforeOk && afterOk) {
-        const startInfo = index.entries.find((entry) => found >= entry.start && found <= entry.end);
-        const endPos = found + needle.length;
-        const endInfo = index.entries.find((entry) => endPos >= entry.start && endPos <= entry.end);
-        if (startInfo && endInfo) {
-          const range = document.createRange();
-          const startOffset = Math.max(0, Math.min(found - startInfo.start, startInfo.node.textContent.length));
-          const endOffset = Math.max(0, Math.min(endPos - endInfo.start, endInfo.node.textContent.length));
-          range.setStart(startInfo.node, startOffset);
-          range.setEnd(endInfo.node, endOffset);
-          const overlapsHighlight = Array.from(document.querySelectorAll(".tc-highlight")).some((el) =>
-            range.intersectsNode(el)
-          );
-          if (!overlapsHighlight) {
-            return range;
+    const root = getRootNode();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+       acceptNode: (node) => {
+          if (isEditableNode(node)) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (parent && (parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE' || parent.tagName === 'NOSCRIPT')) {
+              return NodeFilter.FILTER_REJECT;
           }
-        }
-      }
-      offset = found + needle.length;
+          return NodeFilter.FILTER_ACCEPT;
+       }
+    });
+    
+    const nodes = [];
+    let fullText = "";
+    while (walker.nextNode()) {
+       const node = walker.currentNode;
+       const content = node.textContent;
+       nodes.push({ node, start: fullText.length, end: fullText.length + content.length, content });
+       fullText += content;
     }
+    
+    const normalize = (str) => str.replace(/\s+/g, '');
+    const needleNorm = normalize(needleRaw);
+    if (!needleNorm) return null;
+    
+    const normToFull = [];
+    let normStr = "";
+    for (let i = 0; i < fullText.length; i++) {
+        if (!/\s/.test(fullText[i])) {
+            normToFull.push(i);
+            normStr += fullText[i];
+        }
+    }
+    
+    const occurrences = [];
+    let searchPos = 0;
+    while (true) {
+        const idx = normStr.indexOf(needleNorm, searchPos);
+        if (idx === -1) break;
+        occurrences.push(idx);
+        searchPos = idx + 1;
+    }
+    
+    if (occurrences.length === 0) return null;
+    
+    let bestOccurrence = occurrences[0];
+    
+    if (occurrences.length > 1 && location?.context) {
+       const beforeNorm = normalize(location.context.before || "");
+       const afterNorm = normalize(location.context.after || "");
+       let bestScore = -1;
+       
+       for (const occ of occurrences) {
+           let score = 0;
+           const textBefore = normStr.slice(Math.max(0, occ - 100), occ);
+           const textAfter = normStr.slice(occ + needleNorm.length, occ + needleNorm.length + 100);
+           
+           if (beforeNorm && textBefore.endsWith(beforeNorm)) score += 10;
+           else if (beforeNorm && textBefore.includes(beforeNorm)) score += 5;
+           
+           if (afterNorm && textAfter.startsWith(afterNorm)) score += 10;
+           else if (afterNorm && textAfter.includes(afterNorm)) score += 5;
+           
+           if (score > bestScore) {
+               bestScore = score;
+               bestOccurrence = occ;
+           }
+       }
+    }
+    
+    const startFullIdx = normToFull[bestOccurrence];
+    const endFullIdx = normToFull[bestOccurrence + needleNorm.length - 1] + 1;
+    
+    const startNodeInfo = nodes.find(n => startFullIdx >= n.start && startFullIdx < n.end);
+    const endNodeInfo = nodes.find(n => endFullIdx > n.start && endFullIdx <= n.end);
+    
+    if (startNodeInfo && endNodeInfo) {
+        const range = document.createRange();
+        range.setStart(startNodeInfo.node, startFullIdx - startNodeInfo.start);
+        range.setEnd(endNodeInfo.node, endFullIdx - endNodeInfo.start);
+        
+        const overlapsHighlight = Array.from(document.querySelectorAll(".tc-highlight")).some((el) =>
+            range.intersectsNode(el)
+        );
+        if (!overlapsHighlight) {
+            return range;
+        }
+    }
+    return null;
   };
 
   const clearHighlights = () => {
@@ -666,7 +706,7 @@
         const color = collectorColorCache.get(item.collectorId) || "#f1f0ee";
         const ok = highlightFromLocation(item, item.location, color);
         if (!ok) {
-          const range = findRangeByContext(item, item.location);
+          const range = findRangeWhitespaceAgnostic(item, item.location);
           if (range) {
             wrapRangeWithHighlights(range, item.id, color);
           }
@@ -734,7 +774,7 @@
     const tryHighlight = () => {
       let ok = highlightFromLocation(item, item.location, color, false);
       if (!ok) {
-        const range = findRangeByContext(item, item.location);
+        const range = findRangeWhitespaceAgnostic(item, item.location);
         if (range) {
           wrapRangeWithHighlights(range, item.id, color);
           ok = true;
