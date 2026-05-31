@@ -16,6 +16,13 @@ const MIGRATIONS = {
       shareUrl: item.shareUrl || null,
       shareEditCode: item.shareEditCode || null
     }))
+  }),
+  4: (data) => ({
+    ...data,
+    items: (data.items || []).map((item) => ({
+      ...item,
+      location: item.location || null
+    }))
   })
 };
 

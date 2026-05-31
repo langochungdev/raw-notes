@@ -629,6 +629,22 @@ attachLogViewer({
   doc: document
 });
 
+const openItemById = async (itemId) => {
+  if (!itemId) return;
+  if (!Array.isArray(allItems) || allItems.length === 0) {
+    await reloadAllData();
+  }
+  const item = allItems.find((entry) => entry.id === itemId);
+  if (!item) return;
+  editModalManager.open(item);
+};
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "MANAGER_OPEN_ITEM") {
+    openItemById(message.itemId || "");
+  }
+});
+
 const checkCollectorFolder = async () => {
   const handle = await storage.restoreCollectorDirectory();
   const hasFolder = Boolean(handle);

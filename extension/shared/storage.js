@@ -202,6 +202,7 @@ export class StorageService {
       note: raw?.note || "",
       tags: Array.isArray(raw?.tags) ? raw.tags : [],
       source: raw?.source || null,
+      location: raw?.location || null,
       createdAt: raw?.createdAt || now,
       updatedAt: raw?.updatedAt || now,
       shareUrl: raw?.shareUrl ?? null,

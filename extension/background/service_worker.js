@@ -7,6 +7,21 @@ const storageService = new StorageService(logger);
 const sidePanelByWindow = new Map();
 const SIDE_PANEL_TTL_MS = 6000;
 
+const waitForTabReady = async (tabId) => {
+  if (!tabId) return;
+  const tab = await chrome.tabs.get(tabId);
+  if (tab?.status === "complete") return;
+  await new Promise((resolve) => {
+    const handler = (updatedId, info) => {
+      if (updatedId === tabId && info.status === "complete") {
+        chrome.tabs.onUpdated.removeListener(handler);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(handler);
+  });
+};
+
 async function ensureDefaultCollector() {
   const collectors = await storageService.getCollectors();
   if (collectors.length > 0) return collectors[0];
@@ -121,6 +136,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         text: message.text,
         note: message.note || "",
         source: message.source,
+        location: message.location || null,
         tags: message.tags || []
       });
       await logger.log("INFO", "storage", "Saved item", { id: item.id });
@@ -151,6 +167,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } else {
         await chrome.tabs.create({ url: managerUrl });
       }
+      return { ok: true };
+    }
+
+    if (message?.type === "OPEN_ITEM_DETAIL") {
+      const managerUrl = chrome.runtime.getURL("manager/manager.html");
+      const tabs = await chrome.tabs.query({ url: managerUrl });
+      let targetTab = tabs[0] || null;
+      if (targetTab?.id) {
+        await chrome.tabs.update(targetTab.id, { active: true });
+      } else {
+        targetTab = await chrome.tabs.create({ url: managerUrl, active: true });
+      }
+      const tabId = targetTab?.id;
+      if (!tabId) {
+        return { ok: false, error: "Missing manager tab" };
+      }
+      await waitForTabReady(tabId);
+      await chrome.tabs.sendMessage(tabId, {
+        type: "MANAGER_OPEN_ITEM",
+        itemId: message.itemId || ""
+      });
       return { ok: true };
     }
 
