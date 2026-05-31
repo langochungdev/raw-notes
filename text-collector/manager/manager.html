@@ -47,6 +47,18 @@
             </div>
         </div>
         <main class="layout">
+            <section id="no-folder-state" class="no-folder-state hidden">
+                <div class="no-folder-card">
+                    <svg class="no-folder-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="none" stroke="currentColor" stroke-width="1.5" />
+                        <path d="M12 10v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        <path d="M10 12h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <div class="no-folder-title">Chọn thư mục lưu trữ</div>
+                    <div class="no-folder-desc">Chọn một thư mục để bắt đầu quản lý collector notes.</div>
+                    <button id="no-folder-pick" type="button" class="no-folder-button">Chọn thư mục</button>
+                </div>
+            </section>
             <aside class="collectors">
                 <div class="sidebar-header">
                     <input id="new-collector-name" class="collector-input" type="text" placeholder="Collector name" />

@@ -68,6 +68,8 @@ const editNote = document.getElementById("edit-note");
 const editTags = document.getElementById("edit-tags");
 const editError = document.getElementById("edit-error");
 const miniSearchStatus = document.getElementById("minisearch-status");
+const noFolderState = document.getElementById("no-folder-state");
+const noFolderPick = document.getElementById("no-folder-pick");
 
 let reloadTimer = null;
 
@@ -415,6 +417,15 @@ settingsPickCollectors?.addEventListener("click", async () => {
   await updateSettingsUI({ preferExistingPaths: true });
 });
 
+noFolderPick?.addEventListener("click", async () => {
+  const handle = await storage.requestCollectorDirectory();
+  if (!handle) return;
+  await storage.storeCollectorDirectoryHandle(handle);
+  await storage.writeAllCollectorsToDisk();
+  await writeSettings({ collectorFolderLabel: handle.name || "" });
+  await reloadAllData();
+  await checkCollectorFolder();
+});
 
 settingsModeInputs.forEach((input) => {
   input.addEventListener("change", async (event) => {
@@ -566,16 +577,25 @@ attachLogViewer({
   doc: document
 });
 
+const checkCollectorFolder = async () => {
+  const handle = await storage.restoreCollectorDirectory();
+  const hasFolder = Boolean(handle);
+  if (noFolderState) {
+    noFolderState.classList.toggle("hidden", hasFolder);
+  }
+  return hasFolder;
+};
+
 const init = async () => {
   await checkAndMigrateSchema(logger);
   await reloadAllData();
+  await checkCollectorFolder();
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     if (changes.tc_items || changes.tc_collectors) {
       scheduleReload();
     }
   });
-  // Show onboarding banner if first run
   const stored = await chrome.storage.local.get("onboardDone");
   const onboardDone = stored?.onboardDone;
   const onboardBanner = document.getElementById("onboard-banner");

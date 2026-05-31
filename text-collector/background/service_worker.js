@@ -133,9 +133,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true, collectors };
     }
 
+    if (message?.type === "HAS_COLLECTOR_DIR") {
+      const handle = await storageService.restoreCollectorDirectory();
+      return { ok: true, hasDir: Boolean(handle) };
+    }
+
     if (message?.type === "CREATE_COLLECTOR") {
       const collector = await storageService.createCollector(message.data);
       return { ok: true, collector };
+    }
+
+    if (message?.type === "OPEN_MANAGER") {
+      const managerUrl = chrome.runtime.getURL("manager/manager.html");
+      const tabs = await chrome.tabs.query({ url: managerUrl });
+      if (tabs.length > 0 && tabs[0].id) {
+        await chrome.tabs.update(tabs[0].id, { active: true });
+      } else {
+        await chrome.tabs.create({ url: managerUrl });
+      }
+      return { ok: true };
     }
 
     if (message?.type === "DELETE_COLLECTOR") {

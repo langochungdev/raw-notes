@@ -12,10 +12,12 @@
 body {
     margin: 0;
     background: #282725;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .app {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
 }
@@ -254,6 +256,7 @@ button {
     display: grid;
     grid-template-columns: 280px 1fr;
     min-height: 0;
+    position: relative;
 }
 
 .collectors {
@@ -263,6 +266,7 @@ button {
     flex-direction: column;
     min-height: 0;
     background: #282725;
+    overflow: hidden;
 }
 
 .items {
@@ -271,6 +275,7 @@ button {
     flex-direction: column;
     min-height: 0;
     background: #282725;
+    overflow: hidden;
 }
 
 .sidebar-header {
@@ -350,6 +355,30 @@ button {
 .item-list {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #4a4845 #2f2d2a;
+}
+
+.collector-list::-webkit-scrollbar,
+.item-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.collector-list::-webkit-scrollbar-track,
+.item-list::-webkit-scrollbar-track {
+    background: #2f2d2a;
+    border-radius: 999px;
+}
+
+.collector-list::-webkit-scrollbar-thumb,
+.item-list::-webkit-scrollbar-thumb {
+    background: #4a4845;
+    border-radius: 999px;
+    border: 2px solid #2f2d2a;
 }
 
 .collector-actions {
@@ -578,8 +607,6 @@ margin-bottom: 12px;
 }
 
 .item-list {
-    overflow: auto;
-    min-height: 0;
     gap: 0;
 }
 
@@ -1057,4 +1084,64 @@ margin-bottom: 12px;
     .manual-grid {
         grid-template-columns: 1fr;
     }
+}
+
+.no-folder-state {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    z-index: 10;
+}
+
+.no-folder-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+    padding: 32px;
+    max-width: 340px;
+}
+
+.no-folder-icon {
+    width: 56px;
+    height: 56px;
+    color: var(--accent);
+    opacity: 0.7;
+}
+
+.no-folder-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.no-folder-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.no-folder-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #1a1a1a;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.no-folder-button:hover {
+    background: #252525;
+    border-color: #3a3a3a;
 }

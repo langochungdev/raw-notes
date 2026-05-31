@@ -89,6 +89,12 @@ const app = {
   editorMode: "raw"
 };
 
+const renderSaveStatus = () => {
+  const visible = app.view === "editor";
+  saveStatus.classList.toggle("hidden", !visible);
+  saveStatus.setAttribute("aria-hidden", visible ? "false" : "true");
+};
+
 const setView = (nextView) => {
   app.view = nextView;
   emptyState.classList.toggle("hidden", nextView !== "empty");

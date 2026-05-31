@@ -299,9 +299,25 @@
   };
 
   const updateCollectors = async () => {
+    if (!collectorButtons) return;
+    const dirCheck = await chrome.runtime.sendMessage({ type: "HAS_COLLECTOR_DIR" });
+    if (!dirCheck?.hasDir) {
+      collectorButtons.innerHTML = "";
+      const pickButton = document.createElement("button");
+      pickButton.type = "button";
+      pickButton.className = "tc-collector";
+      pickButton.textContent = "Chọn thư mục";
+      pickButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closePanel();
+        await chrome.runtime.sendMessage({ type: "OPEN_MANAGER" });
+      });
+      collectorButtons.appendChild(pickButton);
+      return;
+    }
     const response = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
     const collectors = response?.collectors || [];
-    if (!collectorButtons) return;
     collectorButtons.innerHTML = "";
     collectors.forEach((collector) => {
       const button = document.createElement("button");
