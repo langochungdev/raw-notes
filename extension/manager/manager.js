@@ -32,8 +32,6 @@ const collectorDeleteSelected = document.getElementById("collector-delete-select
 
 const pickFolderButton = document.getElementById("pick-folder");
 const settingsModal = document.getElementById("settings-modal");
-const settingsCloseButton = document.getElementById("settings-close");
-const settingsCollectorsPath = document.getElementById("settings-collectors-path");
 const settingsPickCollectors = document.getElementById("settings-pick-collectors");
 const settingsGlobalShortcutButton = document.getElementById("settings-global-shortcut");
 const settingsModeInputs = Array.from(
@@ -279,15 +277,15 @@ const updateSettingsUI = async (options = {}) => {
   settingsModeInputs.forEach((input) => {
     input.checked = input.value === settingsState.sidebarOpenMode;
   });
-  if (settingsCollectorsPath) {
+  if (settingsPickCollectors) {
     let handle = await storage.restoreCollectorDirectory();
     if (handle?.name) {
-      settingsCollectorsPath.textContent = handle.name;
+      settingsPickCollectors.textContent = handle.name;
       await writeSettings({ collectorFolderLabel: handle.name });
     } else if (settingsState.collectorFolderLabel) {
-      settingsCollectorsPath.textContent = settingsState.collectorFolderLabel;
-    } else if (!preferExistingPaths || settingsCollectorsPath.textContent === "") {
-      settingsCollectorsPath.textContent = "Not set";
+      settingsPickCollectors.textContent = settingsState.collectorFolderLabel;
+    } else {
+      settingsPickCollectors.textContent = "Thêm thư mục";
     }
   }
 };
@@ -454,9 +452,7 @@ pickFolderButton.addEventListener("click", async () => {
   await openSettings();
 });
 
-settingsCloseButton?.addEventListener("click", () => {
-  closeSettings();
-});
+
 
 settingsModal?.addEventListener("pointerdown", (event) => {
   if (event.target === settingsModal) {
@@ -487,8 +483,8 @@ settingsPickCollectors?.addEventListener("click", async () => {
   const collectorState = await storage.getCollectorHandleState();
   await logger.log("INFO", "fs", "Collector handle state", collectorState);
   await writeSettings({ collectorFolderLabel: handle.name || "" });
-  if (settingsCollectorsPath) {
-    settingsCollectorsPath.textContent = handle.name || "Not set";
+  if (settingsPickCollectors) {
+    settingsPickCollectors.textContent = handle.name || "Thêm thư mục";
   }
   await updateSettingsUI({ preferExistingPaths: true });
   await reloadAllData();
@@ -531,28 +527,51 @@ searchCollectorsToggle.addEventListener("click", (event) => {
   toggleSearchCollectorPanel();
 });
 
+const closeCollectorSelectMode = () => {
+  if (!isCollectorSelectMode) return;
+  isCollectorSelectMode = false;
+  collectorSelectToggle.classList.remove("active");
+  selectedCollectorIds.clear();
+  newCollectorButton.classList.remove("hidden");
+  collectorDeleteSelected.classList.add("hidden");
+  updateCollectorSelectionState();
+  collectorManager.renderCollectorList();
+};
+
 document.addEventListener("pointerdown", (event) => {
-  if (!isSearchCollectorOpen) return;
-  if (
-    searchCollectorsPanel.contains(event.target) ||
-    searchCollectorsToggle.contains(event.target)
-  ) {
-    return;
+  if (isSearchCollectorOpen) {
+    if (
+      !searchCollectorsPanel.contains(event.target) &&
+      !searchCollectorsToggle.contains(event.target)
+    ) {
+      closeSearchCollectorPanel();
+    }
   }
-  closeSearchCollectorPanel();
+  
+  if (isCollectorSelectMode) {
+    if (
+      !collectorList.contains(event.target) &&
+      !collectorSelectToggle.contains(event.target) &&
+      !collectorDeleteSelected.contains(event.target) &&
+      !exportButton.contains(event.target) &&
+      !(exportMenu && exportMenu.contains(event.target))
+    ) {
+      closeCollectorSelectMode();
+    }
+  }
 });
 
 collectorSelectToggle.addEventListener("click", () => {
-  isCollectorSelectMode = !isCollectorSelectMode;
-  collectorSelectToggle.classList.toggle("active", isCollectorSelectMode);
-  if (!isCollectorSelectMode) {
-    selectedCollectorIds.clear();
+  if (isCollectorSelectMode) {
+    closeCollectorSelectMode();
+  } else {
+    isCollectorSelectMode = true;
+    collectorSelectToggle.classList.add("active");
+    newCollectorButton.classList.add("hidden");
+    collectorDeleteSelected.classList.remove("hidden");
+    updateCollectorSelectionState();
+    collectorManager.renderCollectorList();
   }
-  newCollectorButton.classList.toggle("hidden", isCollectorSelectMode);
-  collectorDeleteSelected.classList.toggle("hidden", !isCollectorSelectMode);
-  
-  updateCollectorSelectionState();
-  collectorManager.renderCollectorList();
 });
 
 
@@ -573,6 +592,7 @@ collectorDeleteSelected.addEventListener("click", async () => {
     }
   }
   selectedCollectorIds.clear();
+  closeCollectorSelectMode();
   await reloadAllData();
 });
 

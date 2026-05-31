@@ -89,8 +89,6 @@ export const createCollectorManager = ({
   };
 
   const handleCollectorDelete = async (collector) => {
-    const ok = window.confirm(`Delete ${collector.name}?`);
-    if (!ok) return;
     await storage.deleteCollector(collector.id);
     if (getActiveCollectorId() === collector.id) {
       setActiveCollectorId(null);

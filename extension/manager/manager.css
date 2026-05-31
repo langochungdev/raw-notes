@@ -1031,7 +1031,9 @@ margin-bottom: 12px;
 }
 
 .settings-panel {
-    width: min(640px, 92vw);
+    width: fit-content;
+    min-width: min(360px, 92vw);
+    max-width: min(640px, 92vw);
 }
 
 .modal-header {
@@ -1643,15 +1645,19 @@ margin-bottom: 12px;
 }
 
 .settings-path {
-    flex: 1;
-    min-width: 160px;
+    max-width: 100%;
+    min-width: 0;
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid #4a4845;
     background: #383634;
     color: #f1f0ee;
     font-size: 13px;
-    word-break: break-all;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    cursor: pointer;
 }
 
 .settings-options {
