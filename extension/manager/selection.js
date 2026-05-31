@@ -19,9 +19,14 @@ export const attachSelectionHandlers = ({
   updateSelectionState,
   storage,
   logger,
-  doc
+  doc,
+  onSelectionChange
 }) => {
   let pendingDelete = null;
+
+  const notifySelectionChange = () => {
+    onSelectionChange?.(selectedIds.size);
+  };
 
   const updateBulkMoveSelect = () => {
     if (!bulkMoveSelect) return;
@@ -81,6 +86,7 @@ export const attachSelectionHandlers = ({
     }
     refreshItems();
     updateBulkMoveSelect();
+    notifySelectionChange();
   });
 
   itemList.addEventListener("change", (event) => {
@@ -100,6 +106,7 @@ export const attachSelectionHandlers = ({
       selectedIds
     );
     updateBulkMoveSelect();
+    notifySelectionChange();
   });
 
   bulkMoveSelect?.addEventListener("change", async () => {
@@ -132,6 +139,7 @@ export const attachSelectionHandlers = ({
     renderCollectors();
     refreshItems();
     updateBulkMoveSelect();
+    notifySelectionChange();
 
     try {
       await Promise.all(ids.map((id) =>
@@ -147,6 +155,7 @@ export const attachSelectionHandlers = ({
       renderCollectors();
       refreshItems();
       updateBulkMoveSelect();
+      notifySelectionChange();
       showNotice?.(doc, "Move failed");
       await logger.log("ERROR", "storage", "Bulk move failed", {
         message: error.message || "move failed"
@@ -173,6 +182,7 @@ export const attachSelectionHandlers = ({
     await searchService.index(nextItems);
     renderCollectors();
     refreshItems();
+    notifySelectionChange();
 
     const toast = showUndoToast(doc, `Deleted ${ids.length} items`, () => {
       clearPendingDelete();
@@ -199,4 +209,5 @@ export const attachSelectionHandlers = ({
   });
 
   updateBulkMoveSelect();
+  notifySelectionChange();
 };

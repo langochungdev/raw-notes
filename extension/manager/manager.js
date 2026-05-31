@@ -17,6 +17,7 @@ import { attachLogViewer } from "./logs.js";
 import { createItemManager } from "./items.js";
 import { createCollectorManager, recalcCollectorCounts } from "./collectors.js";
 import { createEditModal } from "./edit_modal.js";
+import { createAnkiExportModal } from "./anki_export.js";
 
 const logger = new Logger();
 const storage = new StorageService(logger);
@@ -48,6 +49,10 @@ const deleteSelectedButton = document.getElementById("delete-selected");
 const itemsCount = document.getElementById("items-count");
 const importButton = document.getElementById("import-collector");
 const exportButton = document.getElementById("export-collector");
+const exportMenu = document.getElementById("export-menu");
+const exportJsonButton = document.getElementById("export-json");
+const exportAnkiButton = document.getElementById("export-anki");
+const exportBadge = document.getElementById("export-badge");
 const viewLogsButton = document.getElementById("view-logs");
 const logModal = document.getElementById("log-modal");
 const closeLogsButton = document.getElementById("close-logs");
@@ -71,6 +76,28 @@ const editError = document.getElementById("edit-error");
 const miniSearchStatus = document.getElementById("minisearch-status");
 const noFolderState = document.getElementById("no-folder-state");
 const noFolderPick = document.getElementById("no-folder-pick");
+const ankiExportModal = document.getElementById("anki-export-modal");
+const ankiTabConfig = document.getElementById("anki-tab-config");
+const ankiTabReview = document.getElementById("anki-tab-review");
+const ankiConfigPanel = document.getElementById("anki-config-panel");
+const ankiReviewPanel = document.getElementById("anki-review-panel");
+const ankiFrontToggle = document.getElementById("anki-front-toggle");
+const ankiBackToggle = document.getElementById("anki-back-toggle");
+const ankiTableBody = document.getElementById("anki-table-body");
+const ankiReviewCard = document.getElementById("anki-review-card");
+const ankiReviewFront = document.getElementById("anki-review-front");
+const ankiReviewBack = document.getElementById("anki-review-back");
+const ankiReviewWrap = document.getElementById("anki-review-wrap");
+const ankiReviewFrontText = document.getElementById("anki-review-front-text");
+const ankiReviewBackText = document.getElementById("anki-review-back-text");
+const ankiReviewBackSecondary = document.getElementById("anki-review-back-secondary");
+const ankiReviewDots = document.getElementById("anki-review-dots");
+const ankiReviewHint = document.getElementById("anki-review-hint");
+const ankiReviewPrev = document.getElementById("anki-review-prev");
+const ankiReviewNext = document.getElementById("anki-review-next");
+const ankiReviewCounter = document.getElementById("anki-review-counter");
+const ankiExportButton = document.getElementById("anki-export");
+const ankiCancelButton = document.getElementById("anki-cancel");
 
 let reloadTimer = null;
 
@@ -156,6 +183,14 @@ const updateSearchPlaceholder = () => {
 const updateMiniSearchStatus = () => {
   if (!miniSearchStatus) return;
   miniSearchStatus.textContent = `MiniSearch ready · ${allItems.length} indexed`;
+};
+
+const updateExportButtonState = (count) => {
+  if (!exportButton || !exportBadge) return;
+  const hasSelection = count > 0;
+  exportButton.classList.toggle("is-selection", hasSelection);
+  exportBadge.classList.toggle("hidden", !hasSelection);
+  exportBadge.textContent = hasSelection ? String(count) : "";
 };
 
 const setAllItemsState = (items) => {
@@ -297,6 +332,30 @@ const editModalManager = createEditModal({
   collectorSelect: editCollector,
   titleEl: editTitle,
   errorEl: editError,
+  doc: document
+});
+
+const ankiExportManager = createAnkiExportModal({
+  modal: ankiExportModal,
+  tabConfigButton: ankiTabConfig,
+  tabReviewButton: ankiTabReview,
+  configPanel: ankiConfigPanel,
+  reviewPanel: ankiReviewPanel,
+  frontToggle: ankiFrontToggle,
+  backToggle: ankiBackToggle,
+  tableBody: ankiTableBody,
+  reviewCard: ankiReviewCard,
+  reviewFront: ankiReviewFrontText,
+  reviewBack: ankiReviewBackText,
+  reviewBackSecondary: ankiReviewBackSecondary,
+  reviewWrap: ankiReviewWrap,
+  reviewDots: ankiReviewDots,
+  reviewHint: ankiReviewHint,
+  reviewPrev: ankiReviewPrev,
+  reviewNext: ankiReviewNext,
+  reviewCounter: ankiReviewCounter,
+  exportButton: ankiExportButton,
+  cancelButton: ankiCancelButton,
   doc: document
 });
 
@@ -547,12 +606,19 @@ collectorDeleteSelected.addEventListener("click", async () => {
 attachImportExport({
   importButton,
   exportButton,
+  exportMenu,
+  exportJsonButton,
+  exportAnkiButton,
+  exportBadge,
   storage,
   logger,
   getActiveCollectorId: () => activeCollectorId,
   isCollectorSelectMode: () => isCollectorSelectMode,
   getSelectedCollectorIds: () => selectedCollectorIds,
+  getSelectedItemIds: () => Array.from(selectedIds),
   getCollectors: () => allCollectors,
+  getAllItems: () => allItems,
+  openAnkiExport: (payload) => ankiExportManager.open(payload),
   loadCollectors: collectorManager.loadCollectors,
   loadItems: itemManager.loadItems,
   showNotice,
@@ -611,7 +677,8 @@ attachSelectionHandlers({
   updateSelectionState,
   storage,
   logger,
-  doc: document
+  doc: document,
+  onSelectionChange: (count) => updateExportButtonState(count)
 });
 
 attachLogViewer({

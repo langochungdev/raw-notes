@@ -1,17 +1,194 @@
 export const attachImportExport = ({
   importButton,
   exportButton,
+  exportMenu,
+  exportJsonButton,
+  exportAnkiButton,
+  exportBadge,
   storage,
   logger,
   getActiveCollectorId,
   isCollectorSelectMode,
   getSelectedCollectorIds,
+  getSelectedItemIds,
   getCollectors,
+  getAllItems,
+  openAnkiExport,
   loadCollectors,
   loadItems,
   showNotice,
   doc
 }) => {
+  const exportMenuWrap = exportButton?.closest(".export-menu-wrap");
+
+  const closeExportMenu = () => {
+    if (!exportMenu || !exportButton) return;
+    exportMenu.classList.add("hidden");
+    exportMenu.classList.remove("open-up");
+    exportButton.setAttribute("aria-expanded", "false");
+  };
+
+  const toggleExportMenu = () => {
+    if (!exportMenu || !exportButton) return;
+    const isHidden = exportMenu.classList.contains("hidden");
+    exportMenu.classList.toggle("hidden", !isHidden);
+    exportButton.setAttribute("aria-expanded", isHidden ? "true" : "false");
+    if (isHidden) {
+      requestAnimationFrame(() => {
+        const rect = exportMenu.getBoundingClientRect();
+        const buttonRect = exportButton.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - buttonRect.bottom - 12;
+        const spaceAbove = buttonRect.top - 12;
+        const shouldOpenUp = rect.height > spaceBelow && spaceAbove > spaceBelow;
+        exportMenu.classList.toggle("open-up", shouldOpenUp);
+      });
+    } else {
+      exportMenu.classList.remove("open-up");
+    }
+  };
+
+  const formatDate = () => new Date().toISOString().slice(0, 10);
+
+  const normalizeFileName = (value) => {
+    const cleaned = String(value || "selection")
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, "_");
+    return cleaned || "selection";
+  };
+
+  const getItemsForExport = () => {
+    const selectedIds = getSelectedItemIds ? getSelectedItemIds() : [];
+    const items = getAllItems ? getAllItems() : [];
+    if (selectedIds.length > 0) {
+      const selectedSet = new Set(selectedIds);
+      return items.filter((item) => selectedSet.has(item.id));
+    }
+    const activeCollectorId = getActiveCollectorId?.();
+    if (!activeCollectorId) return [];
+    return items.filter((item) => {
+      const ids = Array.isArray(item.collectorIds) && item.collectorIds.length > 0
+        ? item.collectorIds
+        : item.collectorId
+          ? [item.collectorId]
+          : [];
+      return ids.includes(activeCollectorId);
+    });
+  };
+
+  const resolveCollector = (items) => {
+    const collectors = getCollectors();
+    const activeId = getActiveCollectorId?.();
+    const active = collectors.find((entry) => entry.id === activeId);
+    if (active) return active;
+    const fallbackId = items?.[0]?.collectorId;
+    if (fallbackId) {
+      return collectors.find((entry) => entry.id === fallbackId) || null;
+    }
+    return collectors[0] || null;
+  };
+
+  const writeFile = async (suggestedName, types, content) => {
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types
+    });
+    const writable = await handle.createWritable();
+    await writable.write(content);
+    await writable.close();
+  };
+
+  const sanitizeTsv = (value) =>
+    String(value || "")
+      .replace(/\t/g, " ")
+      .replace(/\r\n/g, "\n")
+      .replace(/\n/g, "\\n");
+
+  const getOverrideKey = (itemId, side, source) => `${itemId}:${side}:${source}`;
+
+  const getAnkiValue = (item, side, source, overrides) => {
+    const key = getOverrideKey(item.id, side, source);
+    if (overrides?.has(key)) return overrides.get(key) || "";
+    if (source === "note") return item.note || "";
+    return item.text || "";
+  };
+
+  const handleJsonExport = async () => {
+    if (!window.showSaveFilePicker) {
+      showNotice(doc, "File picker not supported");
+      return;
+    }
+    const items = getItemsForExport();
+    if (items.length === 0) {
+      showNotice(doc, "Select a collector first");
+      return;
+    }
+    const collector = resolveCollector(items);
+    if (!collector) {
+      showNotice(doc, "Collector not found");
+      return;
+    }
+    const selectedIds = getSelectedItemIds ? getSelectedItemIds() : [];
+    let data = null;
+    if (selectedIds.length > 0) {
+      data = {
+        schemaVersion: 3,
+        exportedAt: new Date().toISOString(),
+        collector,
+        items
+      };
+    } else {
+      data = await storage.exportCollector(collector.id);
+    }
+    await writeFile(
+      `${normalizeFileName(collector.name)}.json`,
+      [
+        {
+          description: "JSON",
+          accept: { "application/json": [".json"] }
+        }
+      ],
+      JSON.stringify(data, null, 2)
+    );
+    showNotice(doc, "Export complete");
+  };
+
+  const handleAnkiExport = async () => {
+    if (!window.showSaveFilePicker) {
+      showNotice(doc, "File picker not supported");
+      return;
+    }
+    const items = getItemsForExport();
+    if (items.length === 0) {
+      showNotice(doc, "Select a collector first");
+      return;
+    }
+    const collector = resolveCollector(items);
+    if (!collector) {
+      showNotice(doc, "Collector not found");
+      return;
+    }
+    const payload = await openAnkiExport?.({ items, collectorName: collector.name });
+    if (!payload) return;
+    const { frontSource, backSource, overrides } = payload;
+    const rows = items.map((item) => {
+      const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));
+      const back = sanitizeTsv(getAnkiValue(item, "back", backSource, overrides));
+      return `${front}\t${back}`;
+    });
+    const fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
+    await writeFile(
+      fileName,
+      [
+        {
+          description: "TSV",
+          accept: { "text/plain": [".txt"] }
+        }
+      ],
+      rows.join("\n")
+    );
+    showNotice(doc, "Export complete");
+  };
+
   importButton.addEventListener("click", async () => {
     try {
       if (!window.showOpenFilePicker) {
@@ -49,47 +226,39 @@ export const attachImportExport = ({
     }
   });
 
-  exportButton.addEventListener("click", async () => {
+  exportButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    toggleExportMenu();
+  });
+
+  exportJsonButton?.addEventListener("click", async () => {
+    closeExportMenu();
     try {
-      if (!window.showSaveFilePicker) {
-        showNotice(doc, "File picker not supported");
-        return;
-      }
-      const selectedIds = isCollectorSelectMode?.()
-        ? Array.from(getSelectedCollectorIds?.() || [])
-        : [];
-      const collectors = getCollectors();
-      const exportIds = selectedIds.length > 0 ? selectedIds : [getActiveCollectorId()];
-      if (!exportIds[0]) {
-        showNotice(doc, "Select a collector first");
-        return;
-      }
-      for (const collectorId of exportIds) {
-        const collector = collectors.find((entry) => entry.id === collectorId);
-        if (!collector) {
-          showNotice(doc, "Collector not found");
-          return;
-        }
-        const data = await storage.exportCollector(collectorId);
-        const handle = await window.showSaveFilePicker({
-          suggestedName: `${collector.name}.json`,
-          types: [
-            {
-              description: "JSON",
-              accept: { "application/json": [".json"] }
-            }
-          ]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(JSON.stringify(data, null, 2));
-        await writable.close();
-      }
-      showNotice(doc, "Export complete");
+      await handleJsonExport();
     } catch (error) {
       await logger.log("ERROR", "export", error.message || "Export failed", {
         stack: error.stack || null
       });
       showNotice(doc, "Export failed");
+    }
+  });
+
+  exportAnkiButton?.addEventListener("click", async () => {
+    closeExportMenu();
+    try {
+      await handleAnkiExport();
+    } catch (error) {
+      await logger.log("ERROR", "export", error.message || "Export failed", {
+        stack: error.stack || null
+      });
+      showNotice(doc, "Export failed");
+    }
+  });
+
+  doc.addEventListener("pointerdown", (event) => {
+    if (!exportMenuWrap || !exportMenu) return;
+    if (!exportMenuWrap.contains(event.target)) {
+      closeExportMenu();
     }
   });
 };
