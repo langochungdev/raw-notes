@@ -24,6 +24,15 @@
   let restoreObserver = null;
   let lastRestoreUrl = currentUrl;
   let collectorColorCache = new Map();
+  let itemCache = new Map();
+  let inlineEditor = null;
+  let inlineEditorInput = null;
+  let inlineEditorMirror = null;
+  let inlineEditorDelete = null;
+  let inlineEditorItemId = null;
+  let inlineEditorItem = null;
+  let inlineEditorOutsideHandler = null;
+  let highlightClickTimer = null;
   const SETTINGS_KEY = "tc_settings";
   const DEFAULT_SETTINGS = {
     sidebarOpenMode: "float",
@@ -169,6 +178,55 @@
         cursor: pointer;
         box-decoration-break: clone;
       }
+      .tc-inline-editor {
+        position: fixed;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        z-index: 2147483647;
+        pointer-events: auto;
+      }
+      .tc-inline-delete {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 77, 79, 0.6);
+        background: #000;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .tc-inline-field {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      .tc-inline-mirror {
+        background: #000;
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font: 500 13px/1.4 Arial, sans-serif;
+        white-space: pre;
+      }
+      .tc-inline-input {
+        position: absolute;
+        inset: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: transparent;
+        caret-color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font: 500 13px/1.4 Arial, sans-serif;
+      }
+      .tc-inline-input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+      }
       @media (hover: hover) {
         .tc-collector:hover {
           border-color: #3a3a3a;
@@ -183,12 +241,40 @@
     collectorButtons.className = "tc-buttons";
     panel.appendChild(collectorButtons);
 
+    inlineEditor = document.createElement("div");
+    inlineEditor.className = "tc-inline-editor";
+    inlineEditorDelete = document.createElement("button");
+    inlineEditorDelete.type = "button";
+    inlineEditorDelete.className = "tc-inline-delete";
+    inlineEditorDelete.setAttribute("aria-label", "Delete highlight");
+    inlineEditorDelete.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    `;
+    inlineEditorInput = document.createElement("input");
+    inlineEditorInput.type = "text";
+    inlineEditorInput.className = "tc-inline-input";
+    inlineEditorInput.placeholder = "Add note";
+    const inlineEditorField = document.createElement("div");
+    inlineEditorField.className = "tc-inline-field";
+    inlineEditorMirror = document.createElement("span");
+    inlineEditorMirror.className = "tc-inline-mirror";
+    inlineEditorMirror.textContent = " ";
+    inlineEditorField.appendChild(inlineEditorMirror);
+    inlineEditorField.appendChild(inlineEditorInput);
+    inlineEditor.appendChild(inlineEditorDelete);
+    inlineEditor.appendChild(inlineEditorField);
+
     edgeButton = document.createElement("button");
     edgeButton.className = "tc-edge";
     edgeButton.type = "button";
     edgeButton.textContent = "Notes";
 
     root.appendChild(panel);
+    root.appendChild(inlineEditor);
     root.appendChild(edgeButton);
     shadow.appendChild(style);
     shadow.appendChild(root);
@@ -528,6 +614,18 @@
     });
   };
 
+  const clearHighlightsForItem = (itemId) => {
+    const highlights = Array.from(
+      document.querySelectorAll(`.tc-highlight[data-tc-item-id="${itemId}"]`)
+    );
+    highlights.forEach((el) => {
+      const parent = el.parentNode;
+      if (!parent) return;
+      parent.replaceChild(document.createTextNode(el.textContent || ""), el);
+      parent.normalize();
+    });
+  };
+
   const hasHighlightForItem = (itemId) =>
     Boolean(document.querySelector(`.tc-highlight[data-tc-item-id="${itemId}"]`));
 
@@ -542,6 +640,7 @@
       const itemsResponse = await chrome.runtime.sendMessage({ type: "GET_ITEMS" });
       const collectorsResponse = await chrome.runtime.sendMessage({ type: "GET_COLLECTORS" });
       const items = itemsResponse?.items || [];
+      itemCache = new Map(items.map((item) => [item.id, item]));
       const collectors = collectorsResponse?.collectors || [];
       collectorColorCache = new Map(
         collectors.map((collector) => [collector.id, collector.color || "#d97706"])
@@ -564,6 +663,7 @@
         }
       });
     } catch (error) {
+      console.warn("Restore highlights failed", error);
     } finally {
       restoreInFlight = false;
       if (restoreQueued) {
@@ -578,6 +678,88 @@
     restoreTimer = setTimeout(() => {
       restoreHighlights();
     }, delay);
+  };
+
+  const syncInlineEditorMirror = () => {
+    if (!inlineEditorInput || !inlineEditorMirror) return;
+    const value = inlineEditorInput.value || " ";
+    inlineEditorMirror.textContent = value;
+  };
+
+  const closeInlineEditor = async (options = {}) => {
+    if (!inlineEditor || !inlineEditorInput) return;
+    const shouldSave = options.save !== false;
+    const itemId = inlineEditorItemId;
+    const item = inlineEditorItem;
+    const nextNote = inlineEditorInput.value.trim();
+    inlineEditor.style.display = "none";
+    inlineEditorItemId = null;
+    inlineEditorItem = null;
+    if (inlineEditorOutsideHandler) {
+      document.removeEventListener("pointerdown", inlineEditorOutsideHandler);
+      inlineEditorOutsideHandler = null;
+    }
+    if (!shouldSave || !itemId || !item) return;
+    if ((item.note || "") === nextNote) return;
+    try {
+      await chrome.runtime.sendMessage({
+        type: "UPDATE_ITEM",
+        id: itemId,
+        updates: { note: nextNote }
+      });
+      itemCache.set(itemId, { ...item, note: nextNote });
+    } catch (error) {
+      console.warn("Update note failed", error);
+    }
+  };
+
+  const positionInlineEditor = (rect) => {
+    if (!inlineEditor) return;
+    inlineEditor.style.display = "flex";
+    inlineEditor.style.visibility = "hidden";
+    inlineEditor.style.left = "0px";
+    inlineEditor.style.top = "0px";
+    const editorRect = inlineEditor.getBoundingClientRect();
+    const gap = 8;
+    const aboveTop = rect.top - editorRect.height - gap;
+    const belowTop = rect.bottom + gap;
+    const top = aboveTop >= 8 ? aboveTop : belowTop;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - editorRect.width - 8));
+    inlineEditor.style.left = `${left}px`;
+    inlineEditor.style.top = `${top}px`;
+    inlineEditor.style.visibility = "visible";
+  };
+
+  const openInlineEditor = async (itemId, anchorRect) => {
+    if (!inlineEditor || !inlineEditorInput || !inlineEditorDelete) return;
+    await closeInlineEditor({ save: true });
+    let item = itemCache.get(itemId);
+    if (!item) {
+      try {
+        const itemsResponse = await chrome.runtime.sendMessage({ type: "GET_ITEMS" });
+        const items = itemsResponse?.items || [];
+        itemCache = new Map(items.map((entry) => [entry.id, entry]));
+        item = itemCache.get(itemId) || null;
+      } catch (error) {
+        console.warn("Load item failed", error);
+      }
+    }
+    if (!item) return;
+    inlineEditorItemId = itemId;
+    inlineEditorItem = item;
+    inlineEditorInput.value = item.note || "";
+    syncInlineEditorMirror();
+    positionInlineEditor(anchorRect);
+    if (!item.note || item.note.trim() === "") {
+      inlineEditorInput.focus();
+      inlineEditorInput.select();
+    }
+    inlineEditorOutsideHandler = (event) => {
+      const target = event.target;
+      if (target === host || inlineEditor.contains(target)) return;
+      closeInlineEditor({ save: true });
+    };
+    document.addEventListener("pointerdown", inlineEditorOutsideHandler);
   };
 
   const startRestoreObserver = () => {
@@ -758,6 +940,9 @@
     if (response?.ok) {
       showToast("Saved");
       const item = response.item;
+      if (item?.id) {
+        itemCache.set(item.id, item);
+      }
       const range = lastRange?.cloneRange ? lastRange.cloneRange() : null;
       if (item?.id && range) {
         let color = collectorColorCache.get(item.collectorId);
@@ -839,11 +1024,33 @@
   });
 
   document.addEventListener("scroll", () => {
+    closeInlineEditor({ save: true });
     closePanel();
   }, true);
 
+  inlineEditorInput?.addEventListener("input", () => {
+    syncInlineEditorMirror();
+  });
+
+  inlineEditorDelete?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const itemId = inlineEditorItemId;
+    if (!itemId) return;
+    try {
+      await chrome.runtime.sendMessage({ type: "DELETE_ITEMS", ids: [itemId] });
+      itemCache.delete(itemId);
+      clearHighlightsForItem(itemId);
+    } catch (error) {
+      console.warn("Delete item failed", error);
+    } finally {
+      closeInlineEditor({ save: false });
+    }
+  });
+
   document.addEventListener("keydown", async (event) => {
     if (event.key === "Escape") {
+      await closeInlineEditor({ save: true });
       closePanel();
       return;
     }
@@ -861,14 +1068,37 @@
 
   document.addEventListener(
     "click",
-    (event) => {
+    async (event) => {
       const target = event.target?.closest?.(".tc-highlight");
       if (!target) return;
+      if (event.detail > 1) return;
       const itemId = target.dataset.tcItemId;
       if (!itemId) return;
       event.preventDefault();
       event.stopPropagation();
-      chrome.runtime.sendMessage({ type: "OPEN_ITEM_DETAIL", itemId });
+      const rect = target.getBoundingClientRect();
+      if (highlightClickTimer) {
+        clearTimeout(highlightClickTimer);
+      }
+      highlightClickTimer = setTimeout(() => {
+        openInlineEditor(itemId, rect);
+        highlightClickTimer = null;
+      }, 220);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "dblclick",
+    (event) => {
+      const target = event.target?.closest?.(".tc-highlight");
+      if (!target) return;
+      if (highlightClickTimer) {
+        clearTimeout(highlightClickTimer);
+        highlightClickTimer = null;
+      }
+      event.preventDefault();
+      event.stopPropagation();
     },
     true
   );

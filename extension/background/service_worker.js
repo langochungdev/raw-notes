@@ -201,6 +201,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return { ok: true, items };
     }
 
+    if (message?.type === "UPDATE_ITEM") {
+      const id = message.id;
+      const updates = message.updates || {};
+      if (!id) {
+        return { ok: false, error: "Missing item id" };
+      }
+      const item = await storageService.updateItem(id, updates);
+      return { ok: true, item };
+    }
+
+    if (message?.type === "DELETE_ITEMS") {
+      const ids = Array.isArray(message.ids) ? message.ids : [];
+      if (ids.length === 0) {
+        return { ok: false, error: "Missing item ids" };
+      }
+      await storageService.deleteItems(ids);
+      return { ok: true };
+    }
+
     if (message?.type === "OPEN_SIDEPANEL") {
       const windowId = sender?.tab?.windowId;
       if (!windowId) {
