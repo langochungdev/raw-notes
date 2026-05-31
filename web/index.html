@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RawNotes - Browser Extension</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style type="text/tailwindcss">
+        body {
+            font-family: 'Readex Pro', system-ui, -apple-system, sans-serif;
+            background-color: #000;
+            color: #fff;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+            height: 100%;
+        }
+
+        html, #root {
+            height: 100%;
+        }
+
+        .hero-title {
+            letter-spacing: -0.04em;
+            line-height: 0.95;
+        }
+    </style>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+
+<body class="h-full">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const videos = [
+            { id: 1, name: "highlight", url: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_063509_7d167302-4fd4-480b-8260-18ab572333d4.mp4" },
+            { id: 2, name: "search index", url: "https://www.w3schools.com/html/mov_bbb.mp4" },
+            { id: 3, name: "obsidian sync", url: "https://media.w3.org/2010/05/sintel/trailer.mp4" }
+        ];
+
+        function App() {
+            const [videoUrl, setVideoUrl] = useState(videos[0].url);
+            const [uiVisible, setUiVisible] = useState(true);
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape' && !uiVisible) {
+                        setUiVisible(true);
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [uiVisible]);
+
+            return (
+                <section className="relative h-screen w-full overflow-hidden bg-black">
+                    <video
+                        key={videoUrl}
+                        className="absolute inset-0 w-full h-full object-cover z-0"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        src={videoUrl}
+                    />
+
+                    <div
+                        className={`absolute inset-0 z-20 transition-opacity duration-500 ${uiVisible ? 'opacity-0 pointer-events-none' : 'opacity-100 cursor-pointer'
+                            }`}
+                        onClick={() => setUiVisible(true)}
+                    >
+                    </div>
+
+                    <div className={`relative h-full w-full z-10 transition-opacity duration-700 ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
+
+                        <nav className="absolute z-20 px-6 md:px-10 pt-6 top-0 left-0 right-0 flex items-center justify-between gap-4 pointer-events-auto">
+                            <div className="flex items-center gap-2 bg-neutral-900/90 backdrop-blur rounded-full pl-4 pr-6 py-3">
+                                <svg className="h-5 w-5" viewBox="0 0 256 256">
+                                    <path d="M 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 128 L 64 128 Z M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z M 128 64 L 128 128 L 64.5 128 L 32 95 L 0 64 L 0 0 L 64 0 Z M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 128 0 L 192 0 Z" fill="#ffffff" />
+                                </svg>
+                                <span className="text-white text-sm font-normal tracking-tight">rawnotes</span>
+                            </div>
+
+                            <div className="hidden md:flex items-center gap-1 bg-neutral-900/90 backdrop-blur rounded-full px-3 py-2">
+                                {["highlight", "search", "obsidian", "export"].map(item => (
+                                    <a key={item} href="#" className="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">
+                                        {item}
+                                    </a>
+                                ))}
+                            </div>
+
+                            <button className="bg-white text-black text-sm font-normal rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors">
+                                install now
+                            </button>
+                        </nav>
+
+                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-4 md:left-10 top-[18%]">capture</h1>
+                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] right-4 md:right-10 top-[38%]">your</h1>
+                        <h1 className="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-[18%] md:left-[28%] top-[58%]">notes</h1>
+
+                        <p className="absolute left-6 md:left-10 top-[46%] max-w-[240px] text-[15px] leading-snug text-white/90">
+                            highlight text on any website, save to collector, and sync directly to your obsidian vault.
+                        </p>
+
+                        <div className="absolute right-6 md:right-24 top-[14%] flex flex-col items-end">
+                            <div className="flex items-center gap-3 justify-end">
+                                <div className="hidden md:block h-px w-24 bg-white/40 rotate-[20deg]"></div>
+                                <span className="text-4xl md:text-5xl font-medium tracking-tight">&lt; 10ms</span>
+                            </div>
+                            <span className="text-xs md:text-sm text-white/70 mt-1 text-right">search speed</span>
+                        </div>
+
+                        <div className="absolute left-6 md:left-20 bottom-24 md:bottom-28">
+                            <div className="flex items-center gap-3">
+                                <span className="text-4xl md:text-5xl font-medium tracking-tight">7kb</span>
+                                <div className="hidden md:block h-px w-24 bg-white/40 rotate-[-20deg]"></div>
+                            </div>
+                            <span className="text-xs md:text-sm text-white/70 mt-1">minisearch index</span>
+                        </div>
+
+                        <div className="absolute right-6 md:right-20 bottom-16 md:bottom-20 flex flex-col items-end">
+                            <div className="flex items-center gap-3 justify-end">
+                                <div className="hidden md:block h-px w-24 bg-white/40 rotate-[-20deg]"></div>
+                                <span className="text-4xl md:text-5xl font-medium tracking-tight">100%</span>
+                            </div>
+                            <span className="text-xs md:text-sm text-white/70 mt-1 text-right">offline capable</span>
+                        </div>
+
+                        <div className="absolute left-6 md:left-10 bottom-6 md:bottom-8 flex items-center gap-2 pointer-events-auto z-30">
+                            {videos.map(v => (
+                                <button
+                                    key={v.id}
+                                    onClick={() => {
+                                        setVideoUrl(v.url);
+                                        setUiVisible(false);
+                                    }}
+                                    className={`relative w-[72px] h-[44px] rounded-lg border ${videoUrl === v.url ? 'border-white' : 'border-white/20 hover:border-white/50'} overflow-hidden flex items-center justify-center bg-white/5 backdrop-blur-sm transition-all group`}
+                                >
+                                    <span className="text-[10px] text-white/90 z-10">{v.name}</span>
+                                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-0"></div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

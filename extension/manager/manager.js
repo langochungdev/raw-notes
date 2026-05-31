@@ -707,7 +707,68 @@ const checkCollectorFolder = async () => {
   return hasFolder;
 };
 
+const compareVersions = (v1, v2) => {
+  const cleanV1 = (v1 || "").replace(/^v/i, "");
+  const cleanV2 = (v2 || "").replace(/^v/i, "");
+  const parts1 = cleanV1.split(".").map(Number);
+  const parts2 = cleanV2.split(".").map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+};
+
+const checkVersion = async () => {
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const currentVersion = manifest.version.replace(/^v/i, "");
+    const versionEl = document.querySelector(".status-version");
+    if (versionEl) {
+      versionEl.textContent = `langochung.me - RawNotes v${currentVersion}`;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const { tc_last_version_check, tc_latest_version } = await chrome.storage.local.get([
+      "tc_last_version_check",
+      "tc_latest_version"
+    ]);
+
+    let latestVersion = tc_latest_version;
+    if (tc_last_version_check !== today) {
+      const response = await fetch("https://rawnotes.langochung.me/version.json", { cache: "no-cache" });
+      if (response.ok) {
+        const data = await response.json();
+        latestVersion = data.version.replace(/^v/i, "");
+        await chrome.storage.local.set({
+          tc_last_version_check: today,
+          tc_latest_version: latestVersion
+        });
+      }
+    }
+
+    if (latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
+      const floatBtn = document.createElement("a");
+      floatBtn.href = "https://rawnotes.langochung.me/";
+      floatBtn.target = "_blank";
+      floatBtn.className = "update-float-btn";
+      floatBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20V10M18 14l-6-6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Update v${latestVersion}
+      `;
+      document.body.appendChild(floatBtn);
+    }
+  } catch (error) {
+    console.error("Version check failed", error);
+  }
+};
+
 const init = async () => {
+  checkVersion();
   await checkAndMigrateSchema(logger);
   await storage.loadCollectorsFromDisk();
   await reloadAllData();
