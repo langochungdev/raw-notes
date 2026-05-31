@@ -1114,6 +1114,49 @@ margin-bottom: 12px;
     outline-offset: 2px;
 }
 
+.edit-collector-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #4a4845;
+    background: #383634;
+    min-height: 44px;
+}
+
+.collector-pill {
+    border-radius: 999px;
+    padding: 6px 12px;
+    border: 1px solid #5a5753;
+    background: #2f2d2a;
+    color: #d2cfca;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.collector-pill.is-selected {
+    border-color: #d9a441;
+    background: #3a3325;
+    color: #f1f0ee;
+    box-shadow: 0 0 0 1px #d9a441 inset;
+}
+
+.collector-pill:focus-visible {
+    outline: 2px solid #d9a441;
+    outline-offset: 2px;
+}
+
+@media (hover: hover) {
+    .collector-pill:hover {
+        background: #3a3835;
+    }
+
+    .collector-pill.is-selected:hover {
+        background: #433724;
+    }
+}
+
 .edit-input[type="text"] {
     height: 40px;
 }

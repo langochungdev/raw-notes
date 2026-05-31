@@ -26,7 +26,9 @@ export const attachManualEntry = ({
       activeCollectorId: getActiveCollectorId()
     });
     if (!payload) return;
-    const { text, note, collectorId } = payload;
+    const { text, note, collectorIds } = payload;
+    const nextCollectorIds = Array.isArray(collectorIds) ? collectorIds : [];
+    const collectorId = nextCollectorIds[0] || null;
     if (!collectorId) {
       showNotice(doc, "Select a collector");
       return;
@@ -39,7 +41,7 @@ export const attachManualEntry = ({
     const optimisticItem = {
       id: tempId,
       collectorId,
-      collectorIds: [collectorId],
+      collectorIds: nextCollectorIds,
       text,
       note,
       source: null,
@@ -56,7 +58,7 @@ export const attachManualEntry = ({
     try {
       const saved = await storage.saveItem({
         collectorId,
-        collectorIds: [collectorId],
+        collectorIds: nextCollectorIds,
         text,
         note,
         source: null
