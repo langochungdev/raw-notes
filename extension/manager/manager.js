@@ -77,13 +77,23 @@ const miniSearchStatus = document.getElementById("minisearch-status");
 const noFolderState = document.getElementById("no-folder-state");
 const noFolderPick = document.getElementById("no-folder-pick");
 const ankiExportModal = document.getElementById("anki-export-modal");
+const ankiExportPanel = document.getElementById("anki-export-panel");
 const ankiTabConfig = document.getElementById("anki-tab-config");
 const ankiTabReview = document.getElementById("anki-tab-review");
 const ankiConfigPanel = document.getElementById("anki-config-panel");
 const ankiReviewPanel = document.getElementById("anki-review-panel");
+const ankiTemplateSelect = document.getElementById("anki-template-select");
+const ankiVocabControls = document.getElementById("anki-vocab-controls");
+const ankiVocabMode = document.getElementById("anki-vocab-mode");
+const ankiVocabNav = document.getElementById("anki-vocab-nav");
+const ankiVocabPrev = document.getElementById("anki-vocab-prev");
+const ankiVocabNext = document.getElementById("anki-vocab-next");
+const ankiVocabCounter = document.getElementById("anki-vocab-counter");
 const ankiFrontToggle = document.getElementById("anki-front-toggle");
-const ankiBackToggle = document.getElementById("anki-back-toggle");
+const ankiTable = document.getElementById("anki-table");
+const ankiTableHeader = document.getElementById("anki-table-header");
 const ankiTableBody = document.getElementById("anki-table-body");
+const ankiVocabForm = document.getElementById("anki-vocab-form");
 const ankiReviewCard = document.getElementById("anki-review-card");
 const ankiReviewFront = document.getElementById("anki-review-front");
 const ankiReviewBack = document.getElementById("anki-review-back");
@@ -337,13 +347,23 @@ const editModalManager = createEditModal({
 
 const ankiExportManager = createAnkiExportModal({
   modal: ankiExportModal,
+  panel: ankiExportPanel,
   tabConfigButton: ankiTabConfig,
   tabReviewButton: ankiTabReview,
   configPanel: ankiConfigPanel,
   reviewPanel: ankiReviewPanel,
+  templateSelect: ankiTemplateSelect,
+  vocabControls: ankiVocabControls,
+  vocabMode: ankiVocabMode,
+  vocabNav: ankiVocabNav,
+  vocabPrev: ankiVocabPrev,
+  vocabNext: ankiVocabNext,
+  vocabCounter: ankiVocabCounter,
   frontToggle: ankiFrontToggle,
-  backToggle: ankiBackToggle,
+  table: ankiTable,
+  tableHeader: ankiTableHeader,
   tableBody: ankiTableBody,
+  vocabForm: ankiVocabForm,
   reviewCard: ankiReviewCard,
   reviewFront: ankiReviewFrontText,
   reviewBack: ankiReviewBackText,

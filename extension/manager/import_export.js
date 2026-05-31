@@ -104,12 +104,25 @@ export const attachImportExport = ({
       .replace(/\n/g, "\\n");
 
   const getOverrideKey = (itemId, side, source) => `${itemId}:${side}:${source}`;
+  const getVocabKey = (itemId, field) => `${itemId}:vocab:${field}`;
 
   const getAnkiValue = (item, side, source, overrides) => {
     const key = getOverrideKey(item.id, side, source);
     if (overrides?.has(key)) return overrides.get(key) || "";
     if (source === "note") return item.note || "";
     return item.text || "";
+  };
+
+  const getVocabDefaultValue = (item, field) => {
+    if (field === "keyword") return item.text || "";
+    if (field === "short_vi") return item.note || "";
+    return "";
+  };
+
+  const getVocabValue = (item, field, overrides) => {
+    const key = getVocabKey(item.id, field);
+    if (overrides?.has(key)) return overrides.get(key) || "";
+    return getVocabDefaultValue(item, field);
   };
 
   const handleJsonExport = async () => {
@@ -169,13 +182,37 @@ export const attachImportExport = ({
     }
     const payload = await openAnkiExport?.({ items, collectorName: collector.name });
     if (!payload) return;
-    const { frontSource, backSource, overrides } = payload;
-    const rows = items.map((item) => {
-      const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));
-      const back = sanitizeTsv(getAnkiValue(item, "back", backSource, overrides));
-      return `${front}\t${back}`;
-    });
-    const fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
+    const { frontSource, backSource, overrides, template } = payload;
+    let fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
+    let rows = [];
+    if (template === "vocab") {
+      fileName = `${normalizeFileName(collector.name)}_vocab_anki_${formatDate()}.txt`;
+      rows.push("#notetype:Cloze");
+      rows = rows.concat(items.map((item) => {
+        const fields = [
+          "keyword",
+          "suggestion",
+          "explanation",
+          "transcription",
+          "short_vi",
+          "full_vi",
+          "image",
+          "keyword_sound",
+          "meaning_sound",
+          "example_sound"
+        ];
+        const values = fields.map((field) =>
+          sanitizeTsv(getVocabValue(item, field, overrides))
+        );
+        return values.join("\t");
+      }));
+    } else {
+      rows = items.map((item) => {
+        const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));
+        const back = sanitizeTsv(getAnkiValue(item, "back", backSource, overrides));
+        return `${front}\t${back}`;
+      });
+    }
     await writeFile(
       fileName,
       [
