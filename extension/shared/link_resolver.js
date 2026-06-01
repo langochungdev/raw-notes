@@ -66,6 +66,10 @@ const scoreLink = (href, currentUrl) => {
       score += 20;
     }
     
+    if (lastSegment && /^(restacks|likes|reposts|quotes|retweets|share|comments)$/i.test(lastSegment)) {
+      score -= 50;
+    }
+    
     if (url.searchParams.has('fbid') || url.searchParams.has('story_fbid') || url.searchParams.has('post_id')) {
       score += 50;
     }
@@ -84,6 +88,8 @@ export const resolveSource = (selection, options = {}) => {
   const title = options.title || doc?.title || "";
   const fallback = { url: currentUrl, title, type: "unknown" };
   
+  const currentUrlScore = scoreLink(currentUrl, "");
+
   const trace = [];
   trace.push(`========== LINK RESOLVER TRACE ==========`);
   trace.push(`Current URL: ${currentUrl}`);
@@ -188,7 +194,7 @@ export const resolveSource = (selection, options = {}) => {
     levels++;
   }
   
-  if (isSocial && bestWeakLink && bestWeakScore > 0) {
+  if (isSocial && bestWeakLink && bestWeakScore > currentUrlScore) {
      trace.push(`\nTraversed maximum levels or boundary, returning best weak link: ${bestWeakLink}`);
      flushTrace(trace);
      return { url: bestWeakLink, title, type: "social" };
