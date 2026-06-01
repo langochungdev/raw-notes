@@ -999,11 +999,21 @@ const checkVersion = async () => {
 const init = async () => {
   checkVersion();
   await checkAndMigrateSchema(logger);
-  await storage.loadCollectorsFromDisk();
-  await loadConfigFromDisk();
+  
+  const hasAccess = await checkCollectorFolder();
+  
+  if (hasAccess) {
+    try {
+      await storage.loadCollectorsFromDisk();
+      await loadConfigFromDisk();
+    } catch (e) {
+      console.warn("Failed to load from disk during init", e);
+    }
+  }
+  
   await updateSettingsUI();
   await reloadAllData();
-  await checkCollectorFolder();
+  
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local") return;
     if (changes.tc_items || changes.tc_collectors) {

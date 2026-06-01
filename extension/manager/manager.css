@@ -2220,8 +2220,8 @@ margin-bottom: 12px;
     inset: 0;
     display: grid;
     place-items: center;
-    background: var(--bg);
-    z-index: 10;
+    background: #282725;
+    z-index: 100;
 }
 
 .no-folder-card {
