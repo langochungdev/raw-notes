@@ -29,7 +29,7 @@ const SOCIAL_URL_PATTERNS = [
 ];
 
 const isSocialFeed = (url) => {
-  return /facebook\.com|twitter\.com|x\.com|instagram\.com|threads\.net|linkedin\.com|substack\.com/i.test(url);
+  return /facebook\.com|twitter\.com|x\.com|instagram\.com|threads\.net|linkedin\.com|substack\.com|reddit\.com/i.test(url);
 };
 
 const getClosestElement = (node) => {
@@ -107,6 +107,15 @@ export const resolveSource = (selection, options = {}) => {
     return fallback;
   }
 
+  const isSocial = isSocialFeed(currentUrl);
+  trace.push(`isSocialFeed: ${isSocial}`);
+
+  if (!isSocial) {
+    trace.push(`Not a social feed. Returning current URL.`);
+    flushTrace(trace);
+    return fallback;
+  }
+
   const range = selection.getRangeAt(0);
   const origin = getClosestElement(range.commonAncestorContainer);
   if (!origin) {
@@ -116,9 +125,6 @@ export const resolveSource = (selection, options = {}) => {
   }
 
   let cursor = origin;
-  const isSocial = isSocialFeed(currentUrl);
-  trace.push(`isSocialFeed: ${isSocial}`);
-  
   let bestWeakLink = null;
   let bestWeakScore = 0;
   let levels = 0;
@@ -186,23 +192,6 @@ export const resolveSource = (selection, options = {}) => {
      trace.push(`\nTraversed maximum levels or boundary, returning best weak link: ${bestWeakLink}`);
      flushTrace(trace);
      return { url: bestWeakLink, title, type: "social" };
-  }
-
-  // Fallback to searching the first external link as a generic blog fallback if not social
-  if (!isSocial) {
-    trace.push(`\nNot social feed. Searching for generic blog fallback...`);
-    let blogCursor = origin;
-    while (blogCursor && blogCursor !== doc.body) {
-      const anchors = getAnchors(blogCursor);
-      for (const anchor of anchors) {
-        if (anchor.href && anchor.href !== currentUrl && !anchor.href.startsWith('javascript:') && !anchor.href.endsWith('#')) {
-          trace.push(`Found generic external link: ${anchor.href}`);
-          flushTrace(trace);
-          return { url: anchor.href, title, type: "blog" };
-        }
-      }
-      blogCursor = blogCursor.parentElement;
-    }
   }
 
   trace.push(`\nFAILED: No valid link found. Returning fallback: ${fallback.url}`);
