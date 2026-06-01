@@ -1,0 +1,6 @@
+<svg id="logo-5" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+  <rect width="512" height="512" rx="112" fill="#000000"/>
+  <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="200" letter-spacing="-6">RN</text>
+  <line x1="140" y1="360" x2="320" y2="360" stroke="#00eeff" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="372" cy="360" r="16" fill="#00eeff"/>
+</svg>
