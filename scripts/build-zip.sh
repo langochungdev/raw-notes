@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Script nay dung de build va dong goi extension thanh file zip tuong thich tot voi Windows Explorer
-set -euo pipefail
+set -eu
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 VERSION_JSON="$ROOT_DIR/web/version.json"
