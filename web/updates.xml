@@ -2,9 +2,10 @@
 <gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
   <!-- EXTENSION_ID_PLACEHOLDER: thay bang ID thuc sau khi cai -->
   <!-- 0.1.0: script build se tu dien -->
+  <!-- codebase='https://rawnotes.langochung.me/rawnotes.crx' -->
   <app appid='eicldbpoclbkcogmbgioehljjkpopjhb'>
     <updatecheck
-      codebase='https://rawnotes.langochung.me/rawnotes.crx'
+      codebase='https://github.com/langochungdev/raw-notes/releases/download/pre-release-1/rawnotes.crx'
       version='0.1.0' />
   </app>
 </gupdate>
