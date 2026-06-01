@@ -154,19 +154,25 @@ export const createItemManager = ({
     const searchCollectorIds = getSearchCollectorIds?.() || [];
     const isAllCollectors =
       searchCollectorIds.length === 0 || searchCollectorIds.includes("__all__");
-    if (!isAllCollectors) {
-      const allowed = new Set(searchCollectorIds);
-      results = results.filter((item) => {
-        const ids = getItemCollectorIds(item);
-        return ids.some((id) => allowed.has(id));
-      });
-    } else {
+    if (!searchQuery) {
+      // Normal browsing: only show the active collector
       const activeCollectorId = getActiveCollectorId();
       if (activeCollectorId) {
         results = results.filter((item) =>
           getItemCollectorIds(item).includes(activeCollectorId)
         );
       }
+    } else {
+      // Searching: apply search filter
+      if (!isAllCollectors) {
+        const allowed = new Set(searchCollectorIds);
+        results = results.filter((item) => {
+          const ids = getItemCollectorIds(item);
+          return ids.some((id) => allowed.has(id));
+        });
+      }
+      // If isAllCollectors is true, we don't filter by collector,
+      // so it searches across ALL collectors as expected!
     }
     setCurrentResults(results);
     const label = searchQuery ? `Results (${results.length})` : "Items";
