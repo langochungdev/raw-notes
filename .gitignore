@@ -36,3 +36,4 @@ extension/node_modules/
 
 # Docs: ignore plan file
 docs/TEXT_COLLECTOR_PLAN.md
+*.zip
