@@ -35,6 +35,8 @@ const settingsModal = document.getElementById("settings-modal");
 const settingsPickCollectors = document.getElementById("settings-pick-collectors");
 const settingsDefaultColor = document.getElementById("settings-default-color");
 const settingsGlobalShortcutButton = document.getElementById("settings-global-shortcut");
+const settingsLockBanner = document.getElementById("settings-lock-banner");
+const settingsLockPick = document.getElementById("settings-lock-pick");
 const settingsModeInputs = Array.from(
   document.querySelectorAll("input[name=\"sidebar-open-mode\"]")
 );
@@ -77,11 +79,24 @@ const noFolderState = document.getElementById("no-folder-state");
 const noFolderPick = document.getElementById("no-folder-pick");
 const ankiExportModal = document.getElementById("anki-export-modal");
 const ankiExportPanel = document.getElementById("anki-export-panel");
+const ankiTabRow = document.getElementById("anki-tab-row");
 const ankiTabConfig = document.getElementById("anki-tab-config");
 const ankiTabReview = document.getElementById("anki-tab-review");
 const ankiConfigPanel = document.getElementById("anki-config-panel");
 const ankiReviewPanel = document.getElementById("anki-review-panel");
 const ankiTemplateSelect = document.getElementById("anki-template-select");
+const ankiTemplateDelete = document.getElementById("anki-template-delete");
+const ankiCustomSummary = document.getElementById("anki-custom-summary");
+const ankiCustomPanel = document.getElementById("anki-custom-panel");
+const ankiCustomBack = document.getElementById("anki-custom-back");
+const ankiCustomName = document.getElementById("anki-custom-name");
+const ankiCustomTextMap = document.getElementById("anki-custom-text-map");
+const ankiCustomNoteMap = document.getElementById("anki-custom-note-map");
+const ankiCustomFields = document.getElementById("anki-custom-fields");
+const ankiCustomAddField = document.getElementById("anki-custom-add-field");
+const ankiCustomCancel = document.getElementById("anki-custom-cancel");
+const ankiCustomSave = document.getElementById("anki-custom-save");
+const ankiCustomError = document.getElementById("anki-custom-error");
 const ankiVocabControls = document.getElementById("anki-vocab-controls");
 const ankiVocabMode = document.getElementById("anki-vocab-mode");
 const ankiVocabNav = document.getElementById("anki-vocab-nav");
@@ -105,8 +120,11 @@ const ankiReviewHint = document.getElementById("anki-review-hint");
 const ankiReviewPrev = document.getElementById("anki-review-prev");
 const ankiReviewNext = document.getElementById("anki-review-next");
 const ankiReviewCounter = document.getElementById("anki-review-counter");
+const ankiTemplateEdit = document.getElementById("anki-template-edit");
+const ankiFooter = document.getElementById("anki-footer");
 const ankiExportButton = document.getElementById("anki-export");
 const ankiCancelButton = document.getElementById("anki-cancel");
+const ankiCustomDelete = document.getElementById("anki-custom-delete");
 
 let reloadTimer = null;
 
@@ -126,7 +144,121 @@ const DEFAULT_SETTINGS = {
   collectorFolderLabel: "",
   defaultCollectorColor: "#00eeff"
 };
+const CONFIG_FILE_NAME = "config.json";
+const createDefaultConfig = () => ({
+  schemaVersion: 1,
+  updatedAt: new Date().toISOString(),
+  settings: { ...DEFAULT_SETTINGS },
+  ankiTemplates: []
+});
 let settingsState = { ...DEFAULT_SETTINGS };
+let configState = createDefaultConfig();
+let hasCollectorFolder = false;
+
+const normalizeTemplate = (raw) => {
+  if (!raw || !raw.id || !raw.name) return null;
+  const fields = Array.isArray(raw.fields)
+    ? raw.fields.map((field) => String(field || "").trim()).filter(Boolean)
+    : [];
+  return {
+    id: String(raw.id),
+    name: String(raw.name),
+    isCustom: Boolean(raw.isCustom),
+    createdAt: raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+    textField: raw.textField ? String(raw.textField) : "",
+    noteField: raw.noteField ? String(raw.noteField) : "",
+    fields
+  };
+};
+
+const normalizeConfig = (raw) => {
+  const fallback = createDefaultConfig();
+  const settings = { ...fallback.settings, ...(raw?.settings || {}) };
+  const templates = Array.isArray(raw?.ankiTemplates)
+    ? raw.ankiTemplates.map(normalizeTemplate).filter(Boolean)
+    : [];
+  return {
+    schemaVersion: 1,
+    updatedAt: raw?.updatedAt || fallback.updatedAt,
+    settings,
+    ankiTemplates: templates
+  };
+};
+
+const setSettingsLocked = (locked) => {
+  const isLocked = Boolean(locked);
+  settingsModal?.querySelector(".settings-panel")?.classList.toggle("is-locked", isLocked);
+  settingsLockBanner?.classList.toggle("hidden", !isLocked);
+  settingsModeInputs.forEach((input) => {
+    input.disabled = isLocked;
+  });
+  if (settingsDefaultColor) {
+    settingsDefaultColor.disabled = isLocked;
+  }
+  if (settingsGlobalShortcutButton) {
+    settingsGlobalShortcutButton.disabled = isLocked;
+  }
+  if (settingsPickCollectors) {
+    settingsPickCollectors.disabled = isLocked;
+  }
+};
+
+const loadConfigFromDisk = async (options = {}) => {
+  const shouldCreate = options.createIfMissing !== false;
+  const handle = await storage.restoreCollectorDirectory();
+  hasCollectorFolder = Boolean(handle);
+  setSettingsLocked(!hasCollectorFolder);
+  if (!handle) {
+    configState = createDefaultConfig();
+    settingsState = { ...DEFAULT_SETTINGS };
+    return configState;
+  }
+  let raw = null;
+  try {
+    raw = await storage.tryReadJsonFile(handle, CONFIG_FILE_NAME);
+  } catch (error) {
+    raw = null;
+  }
+  if (!raw && shouldCreate) {
+    const next = createDefaultConfig();
+    try {
+      await storage.writeJsonFile(handle, CONFIG_FILE_NAME, next);
+    } catch (error) {
+      await logger.log("WARN", "fs", "Failed to create config.json", {
+        message: error.message || "write failed"
+      });
+    }
+    configState = next;
+  } else {
+    configState = normalizeConfig(raw || {});
+  }
+  settingsState = { ...DEFAULT_SETTINGS, ...(configState.settings || {}) };
+  await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: settingsState });
+  return configState;
+};
+
+const saveConfigToDisk = async (nextConfig) => {
+  configState = {
+    ...nextConfig,
+    updatedAt: new Date().toISOString()
+  };
+  if (!hasCollectorFolder) return configState;
+  const handle = await storage.restoreCollectorDirectory();
+  if (!handle) {
+    hasCollectorFolder = false;
+    setSettingsLocked(true);
+    return configState;
+  }
+  try {
+    await storage.writeJsonFile(handle, CONFIG_FILE_NAME, configState);
+  } catch (error) {
+    await logger.log("WARN", "fs", "Failed to write config.json", {
+      message: error.message || "write failed"
+    });
+  }
+  return configState;
+};
 
 const updateCollectorSelectionState = () => {
   if (isCollectorSelectMode) {
@@ -143,9 +275,15 @@ const updateCollectorSelectionState = () => {
 };
 
 const readSettings = async () => {
-  const stored = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
-  const value = stored[STORAGE_KEYS.SETTINGS] || {};
-  settingsState = { ...DEFAULT_SETTINGS, ...value };
+  if (!hasCollectorFolder) {
+    settingsState = { ...DEFAULT_SETTINGS };
+    return settingsState;
+  }
+  if (!configState) {
+    await loadConfigFromDisk();
+  }
+  settingsState = { ...DEFAULT_SETTINGS, ...(configState.settings || {}) };
+  await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: settingsState });
   return settingsState;
 };
 
@@ -153,6 +291,11 @@ const writeSettings = async (updates) => {
   const next = { ...settingsState, ...updates };
   settingsState = next;
   await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: next });
+  if (!hasCollectorFolder) return next;
+  await saveConfigToDisk({
+    ...configState,
+    settings: next
+  });
   return next;
 };
 
@@ -275,12 +418,14 @@ const searchService = new SearchService();
 
 const updateSettingsUI = async (options = {}) => {
   const preferExistingPaths = Boolean(options.preferExistingPaths);
+  const handle = await storage.restoreCollectorDirectory();
+  hasCollectorFolder = Boolean(handle);
+  setSettingsLocked(!hasCollectorFolder);
   await readSettings();
   settingsModeInputs.forEach((input) => {
     input.checked = input.value === settingsState.sidebarOpenMode;
   });
   if (settingsPickCollectors) {
-    let handle = await storage.restoreCollectorDirectory();
     if (handle?.name) {
       settingsPickCollectors.textContent = handle.name;
       await writeSettings({ collectorFolderLabel: handle.name });
@@ -297,6 +442,7 @@ const updateSettingsUI = async (options = {}) => {
 
 const openSettings = async () => {
   if (!settingsModal) return;
+  await loadConfigFromDisk();
   await updateSettingsUI();
   settingsModal.classList.remove("hidden");
 };
@@ -322,11 +468,26 @@ const editModalManager = createEditModal({
 const ankiExportManager = createAnkiExportModal({
   modal: ankiExportModal,
   panel: ankiExportPanel,
+  tabRow: ankiTabRow,
   tabConfigButton: ankiTabConfig,
   tabReviewButton: ankiTabReview,
   configPanel: ankiConfigPanel,
   reviewPanel: ankiReviewPanel,
   templateSelect: ankiTemplateSelect,
+  templateDeleteButton: ankiTemplateDelete,
+  templateEditButton: ankiTemplateEdit,
+  customSummary: ankiCustomSummary,
+  customPanel: ankiCustomPanel,
+  customBackButton: ankiCustomBack,
+  customNameInput: ankiCustomName,
+  customTextMap: ankiCustomTextMap,
+  customNoteMap: ankiCustomNoteMap,
+  customFields: ankiCustomFields,
+  customAddField: ankiCustomAddField,
+  customCancelButton: ankiCustomCancel,
+  customDeleteButton: ankiCustomDelete,
+  customSaveButton: ankiCustomSave,
+  customError: ankiCustomError,
   vocabControls: ankiVocabControls,
   vocabMode: ankiVocabMode,
   vocabNav: ankiVocabNav,
@@ -350,6 +511,16 @@ const ankiExportManager = createAnkiExportModal({
   reviewCounter: ankiReviewCounter,
   exportButton: ankiExportButton,
   cancelButton: ankiCancelButton,
+  footer: ankiFooter,
+  getCustomTemplates: () => configState.ankiTemplates || [],
+  saveCustomTemplates: async (templates) => {
+    const nextConfig = {
+      ...configState,
+      ankiTemplates: templates
+    };
+    await saveConfigToDisk(nextConfig);
+    return configState;
+  },
   doc: document
 });
 
@@ -472,9 +643,9 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-settingsPickCollectors?.addEventListener("click", async () => {
+const handlePickCollectorFolder = async () => {
   const handle = await storage.requestCollectorDirectory();
-  if (!handle) return;
+  if (!handle) return null;
   await storage.storeCollectorDirectoryHandle(handle);
   await storage.loadCollectorsFromDisk();
   await logger.log("INFO", "fs", "Picked collector folder", {
@@ -487,21 +658,27 @@ settingsPickCollectors?.addEventListener("click", async () => {
   });
   const collectorState = await storage.getCollectorHandleState();
   await logger.log("INFO", "fs", "Collector handle state", collectorState);
+  await loadConfigFromDisk();
   await writeSettings({ collectorFolderLabel: handle.name || "" });
   if (settingsPickCollectors) {
     settingsPickCollectors.textContent = handle.name || "Thêm thư mục";
   }
   await updateSettingsUI({ preferExistingPaths: true });
   await reloadAllData();
+  return handle;
+};
+
+settingsPickCollectors?.addEventListener("click", async () => {
+  await handlePickCollectorFolder();
+});
+
+settingsLockPick?.addEventListener("click", async () => {
+  await handlePickCollectorFolder();
 });
 
 noFolderPick?.addEventListener("click", async () => {
-  const handle = await storage.requestCollectorDirectory();
+  const handle = await handlePickCollectorFolder();
   if (!handle) return;
-  await storage.storeCollectorDirectoryHandle(handle);
-  await storage.loadCollectorsFromDisk();
-  await writeSettings({ collectorFolderLabel: handle.name || "" });
-  await reloadAllData();
   await checkCollectorFolder();
 });
 
@@ -716,6 +893,8 @@ chrome.runtime.onMessage.addListener((message) => {
 const checkCollectorFolder = async () => {
   const handle = await storage.restoreCollectorDirectory();
   const hasFolder = Boolean(handle);
+  hasCollectorFolder = hasFolder;
+  setSettingsLocked(!hasFolder);
   if (noFolderState) {
     noFolderState.classList.toggle("hidden", hasFolder);
   }
@@ -778,6 +957,8 @@ const init = async () => {
   checkVersion();
   await checkAndMigrateSchema(logger);
   await storage.loadCollectorsFromDisk();
+  await loadConfigFromDisk();
+  await updateSettingsUI();
   await reloadAllData();
   await checkCollectorFolder();
   chrome.storage.onChanged.addListener((changes, areaName) => {

@@ -1,11 +1,26 @@
 export const createAnkiExportModal = ({
   modal,
   panel,
+  tabRow,
   tabConfigButton,
   tabReviewButton,
   configPanel,
   reviewPanel,
   templateSelect,
+  templateDeleteButton,
+  templateEditButton,
+  customSummary,
+  customPanel,
+  customBackButton,
+  customNameInput,
+  customTextMap,
+  customNoteMap,
+  customFields,
+  customAddField,
+  customCancelButton,
+  customDeleteButton,
+  customSaveButton,
+  customError,
   vocabControls,
   vocabMode,
   vocabNav,
@@ -29,6 +44,9 @@ export const createAnkiExportModal = ({
   reviewCounter,
   exportButton,
   cancelButton,
+  footer,
+  getCustomTemplates,
+  saveCustomTemplates,
   doc
 }) => {
   let resolver = null;
@@ -38,13 +56,28 @@ export const createAnkiExportModal = ({
   let frontSource = "text";
   let backSource = "note";
   let template = "basic";
+  let templateValue = "basic";
   let currentIndex = 0;
   let vocabEditMode = "table";
   let currentTab = "config";
+  let customTemplates = [];
+  let selectedCustomTemplate = null;
+  let customDraft = {
+    name: "",
+    textField: "",
+    noteField: "",
+    fields: []
+  };
+  let customPrevTemplateValue = "basic";
+  let isCustomPanelOpen = false;
+  let editingTemplateId = "";
   const audioPlayer = new Audio();
 
   const TEMPLATE_BASIC = "basic";
   const TEMPLATE_VOCAB = "vocab";
+  const TEMPLATE_CUSTOM = "custom";
+  const TEMPLATE_CUSTOM_ADD = "custom-add";
+  const CUSTOM_PREFIX = "custom:";
 
   const vocabFields = [
     { key: "keyword", label: "Keyword", type: "text" },
@@ -67,6 +100,287 @@ export const createAnkiExportModal = ({
   const setFooterCount = (count) => {
     if (!exportButton) return;
     exportButton.textContent = `Export ${count} cards`;
+  };
+
+  const escapeText = (value) => String(value || "").replace(/\s+/g, " ").trim();
+
+  const normalizeFieldName = (value) => String(value || "").trim();
+
+  const normalizeCustomTemplate = (raw) => {
+    if (!raw || !raw.id || !raw.name) return null;
+    const fields = Array.isArray(raw.fields)
+      ? raw.fields.map(normalizeFieldName).filter(Boolean)
+      : [];
+    return {
+      id: String(raw.id),
+      name: String(raw.name),
+      isCustom: true,
+      createdAt: raw.createdAt || new Date().toISOString(),
+      updatedAt: raw.updatedAt || new Date().toISOString(),
+      textField: raw.textField ? String(raw.textField) : "",
+      noteField: raw.noteField ? String(raw.noteField) : "",
+      fields
+    };
+  };
+
+  const loadCustomTemplates = () => {
+    const raw = typeof getCustomTemplates === "function" ? getCustomTemplates() : [];
+    customTemplates = Array.isArray(raw)
+      ? raw.map(normalizeCustomTemplate).filter(Boolean)
+      : [];
+  };
+
+  const renderTemplateOptions = () => {
+    if (!templateSelect) return;
+    templateSelect.innerHTML = "";
+    const buildOption = (value, label) => {
+      const option = doc.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      return option;
+    };
+    templateSelect.appendChild(buildOption(TEMPLATE_BASIC, "Basic"));
+    templateSelect.appendChild(buildOption(TEMPLATE_VOCAB, "Vocabulary"));
+    customTemplates.forEach((item) => {
+      templateSelect.appendChild(buildOption(`${CUSTOM_PREFIX}${item.id}`, item.name));
+    });
+    templateSelect.appendChild(buildOption(TEMPLATE_CUSTOM_ADD, "Custom +"));
+  };
+
+  const selectTemplateValue = (value) => {
+    if (!templateSelect) return;
+    templateValue = value;
+    templateSelect.value = value;
+  };
+
+  const setTemplateDeleteState = () => {
+    if (!templateDeleteButton) return;
+    const canDelete = Boolean(selectedCustomTemplate);
+    templateDeleteButton.classList.toggle("hidden", !canDelete);
+    templateDeleteButton.disabled = !canDelete;
+  };
+
+  const setTemplateEditState = () => {
+    if (!templateEditButton) return;
+    const canEdit = Boolean(selectedCustomTemplate);
+    templateEditButton.classList.toggle("hidden", !canEdit);
+    templateEditButton.disabled = !canEdit;
+  };
+
+  const setCustomPanelOpen = (value) => {
+    isCustomPanelOpen = Boolean(value);
+    if (customPanel) customPanel.classList.toggle("hidden", !isCustomPanelOpen);
+    if (tabRow) tabRow.classList.toggle("hidden", isCustomPanelOpen);
+    if (footer) footer.classList.toggle("hidden", isCustomPanelOpen);
+    if (configPanel) configPanel.classList.toggle("hidden", isCustomPanelOpen || currentTab !== "config");
+    if (reviewPanel) reviewPanel.classList.toggle("hidden", isCustomPanelOpen || currentTab === "config");
+    if (panel) panel.classList.toggle("is-custom", isCustomPanelOpen);
+  };
+
+  const setCustomError = (message) => {
+    if (!customError) return;
+    if (!message) {
+      customError.textContent = "";
+      customError.classList.add("hidden");
+      return;
+    }
+    customError.textContent = message;
+    customError.classList.remove("hidden");
+  };
+
+  const resetCustomDraft = (templateData = null) => {
+    if (templateData) {
+      editingTemplateId = templateData.id;
+      customDraft = {
+        id: templateData.id,
+        name: templateData.name,
+        isCustom: true,
+        createdAt: templateData.createdAt || new Date().toISOString(),
+        updatedAt: templateData.updatedAt || new Date().toISOString(),
+        textField: templateData.textField || "",
+        noteField: templateData.noteField || "",
+        fields: Array.isArray(templateData.fields) ? [...templateData.fields] : []
+      };
+      return;
+    }
+    editingTemplateId = "";
+    customDraft = {
+      id: crypto.randomUUID(),
+      name: "",
+      isCustom: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      textField: "Word",
+      noteField: "Definition",
+      fields: ["Word", "Definition"]
+    };
+  };
+
+  const renderCustomMapOptions = () => {
+    if (!customDraft) return;
+    const fieldOptions = customDraft.fields.map(normalizeFieldName).filter(Boolean);
+    const buildOptions = (selectEl, selectedValue) => {
+      if (!selectEl) return;
+      selectEl.innerHTML = "";
+      fieldOptions.forEach((field) => {
+        const option = doc.createElement("option");
+        option.value = field;
+        option.textContent = field;
+        selectEl.appendChild(option);
+      });
+      const emptyOption = doc.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "— khong map —";
+      selectEl.appendChild(emptyOption);
+      selectEl.value = fieldOptions.includes(selectedValue) ? selectedValue : "";
+      return selectEl.value;
+    };
+    customDraft.textField = buildOptions(customTextMap, customDraft.textField);
+    customDraft.noteField = buildOptions(customNoteMap, customDraft.noteField);
+  };
+
+  const renderCustomFieldList = () => {
+    if (!customFields || !customDraft) return;
+    customFields.innerHTML = "";
+    customDraft.fields.forEach((fieldName, index) => {
+      const row = doc.createElement("div");
+      row.className = "anki-custom-field";
+      row.setAttribute("draggable", "true");
+      row.dataset.index = String(index);
+
+      const handle = doc.createElement("span");
+      handle.className = "anki-custom-handle";
+      handle.textContent = "⠿";
+
+      const input = doc.createElement("input");
+      input.type = "text";
+      input.className = "anki-custom-field-input";
+      input.value = fieldName;
+      input.addEventListener("input", (event) => {
+        customDraft.fields[index] = normalizeFieldName(event.target.value);
+        renderCustomMapOptions();
+        renderCustomFieldList();
+      });
+
+      const badge = doc.createElement("span");
+      badge.className = "anki-custom-badge";
+      const badgeType = fieldName === customDraft.textField
+        ? "text"
+        : fieldName === customDraft.noteField
+          ? "note"
+          : "empty";
+      if (badgeType === "text") {
+        badge.textContent = "text";
+        badge.classList.add("is-text");
+      } else if (badgeType === "note") {
+        badge.textContent = "note";
+        badge.classList.add("is-note");
+      } else {
+        badge.textContent = "trong";
+      }
+
+      const remove = doc.createElement("button");
+      remove.type = "button";
+      remove.className = "anki-custom-remove";
+      remove.textContent = "✕";
+      remove.addEventListener("click", () => {
+        customDraft.fields.splice(index, 1);
+        renderCustomMapOptions();
+        renderCustomFieldList();
+      });
+
+      row.appendChild(handle);
+      row.appendChild(input);
+      row.appendChild(badge);
+      row.appendChild(remove);
+      row.addEventListener("dragstart", (event) => {
+        event.dataTransfer.setData("text/plain", String(index));
+      });
+      row.addEventListener("dragover", (event) => {
+        event.preventDefault();
+      });
+      row.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const fromIndex = Number(event.dataTransfer.getData("text/plain"));
+        if (!Number.isFinite(fromIndex) || fromIndex === index) return;
+        const [moved] = customDraft.fields.splice(fromIndex, 1);
+        customDraft.fields.splice(index, 0, moved);
+        renderCustomFieldList();
+      });
+      customFields.appendChild(row);
+    });
+  };
+
+  const renderCustomPanel = () => {
+    if (!customDraft) return;
+    if (customNameInput) customNameInput.value = customDraft.name || "";
+    renderCustomMapOptions();
+    renderCustomFieldList();
+    setCustomError("");
+    if (customDeleteButton) {
+      const canDelete = Boolean(editingTemplateId);
+      customDeleteButton.classList.toggle("hidden", !canDelete);
+      customDeleteButton.disabled = !canDelete;
+    }
+  };
+
+  const renderCustomSummary = (templateData) => {
+    if (!customSummary) return;
+    if (!templateData) {
+      customSummary.textContent = "";
+      customSummary.classList.add("hidden");
+      return;
+    }
+    const parts = [
+      `Template: ${templateData.name}`,
+      `Text → ${templateData.textField || "(khong map)"}`,
+      `Note → ${templateData.noteField || "(khong map)"}`,
+      `Fields: ${templateData.fields.join(", ") || "(none)"}`
+    ];
+    customSummary.textContent = parts.join(" · ");
+    customSummary.classList.remove("hidden");
+  };
+
+  const openCustomPanel = (templateData = null) => {
+    customPrevTemplateValue = templateValue === TEMPLATE_CUSTOM_ADD
+      ? TEMPLATE_BASIC
+      : templateValue;
+    currentTab = "config";
+    resetCustomDraft(templateData);
+    renderCustomPanel();
+    setCustomPanelOpen(true);
+  };
+
+  const closeCustomPanel = () => {
+    setCustomPanelOpen(false);
+  };
+
+  const setTemplateFromValue = (value) => {
+    if (value === TEMPLATE_CUSTOM_ADD) {
+      openCustomPanel();
+      return;
+    }
+    if (value.startsWith(CUSTOM_PREFIX)) {
+      const templateId = value.slice(CUSTOM_PREFIX.length);
+      selectedCustomTemplate = customTemplates.find((item) => item.id === templateId) || null;
+      if (!selectedCustomTemplate) {
+        template = TEMPLATE_BASIC;
+        renderCustomSummary(null);
+        setTemplateDeleteState();
+        setTemplateEditState();
+        return;
+      }
+      template = TEMPLATE_CUSTOM;
+      renderCustomSummary(selectedCustomTemplate);
+      setTemplateDeleteState();
+      setTemplateEditState();
+      return;
+    }
+    selectedCustomTemplate = null;
+    template = value === TEMPLATE_VOCAB ? TEMPLATE_VOCAB : TEMPLATE_BASIC;
+    renderCustomSummary(null);
+    setTemplateDeleteState();
+    setTemplateEditState();
   };
 
   const getToggleValue = (group, fallback) => {
@@ -106,6 +420,7 @@ export const createAnkiExportModal = ({
 
   const getOverrideKey = (itemId, side, source) => `${itemId}:${side}:${source}`;
   const getVocabKey = (itemId, field) => `${itemId}:vocab:${field}`;
+  const getCustomKey = (itemId, field) => `${itemId}:custom:${field}`;
 
   const getDisplayValue = (item, side, source) => {
     const key = getOverrideKey(item.id, side, source);
@@ -117,6 +432,14 @@ export const createAnkiExportModal = ({
     const key = getVocabKey(item.id, field);
     if (overrides.has(key)) return overrides.get(key);
     return getVocabDefaultValue(item, field);
+  };
+
+  const getCustomValue = (item, field) => {
+    const key = getCustomKey(item.id, field);
+    if (overrides.has(key)) return overrides.get(key);
+    if (selectedCustomTemplate?.textField === field) return item.text || "";
+    if (selectedCustomTemplate?.noteField === field) return item.note || "";
+    return "";
   };
 
   const escapeHtml = (value) =>
@@ -218,7 +541,16 @@ export const createAnkiExportModal = ({
     tableHeader.innerHTML = "";
     const row = doc.createElement("div");
     row.className = "anki-row anki-header";
-    if (template === TEMPLATE_BASIC) {
+    if (template === TEMPLATE_CUSTOM) {
+      const fields = selectedCustomTemplate?.fields || [];
+      row.style.gridTemplateColumns = `repeat(${fields.length || 1}, minmax(160px, 1fr))`;
+      fields.forEach((field) => {
+        const cell = doc.createElement("div");
+        cell.className = "anki-cell";
+        cell.textContent = field;
+        row.appendChild(cell);
+      });
+    } else if (template === TEMPLATE_BASIC) {
       const indexCell = doc.createElement("div");
       indexCell.className = "anki-cell anki-index";
       indexCell.textContent = "#";
@@ -255,6 +587,37 @@ export const createAnkiExportModal = ({
   const renderTable = () => {
     if (!tableBody) return;
     tableBody.innerHTML = "";
+    if (template === TEMPLATE_CUSTOM) {
+      if (vocabEditMode !== "table") return;
+      const fields = selectedCustomTemplate?.fields || [];
+      items.forEach((item) => {
+        const row = doc.createElement("div");
+        row.className = "anki-row";
+        row.style.gridTemplateColumns = `repeat(${fields.length || 1}, minmax(160px, 1fr))`;
+        fields.forEach((field) => {
+          const cell = doc.createElement("div");
+          cell.className = "anki-cell";
+          cell.contentEditable = "true";
+          cell.dataset.itemId = item.id;
+          cell.dataset.field = field;
+          cell.dataset.placeholder = "Nhap noi dung...";
+          setCellContent(cell, getCustomValue(item, field));
+          cell.addEventListener("input", (event) => {
+            const target = event.currentTarget;
+            const value = target.textContent || "";
+            overrides.set(getCustomKey(item.id, field), value);
+            if (value) {
+              target.classList.remove("is-empty");
+            } else {
+              target.classList.add("is-empty");
+            }
+          });
+          row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+      });
+      return;
+    }
     if (template === TEMPLATE_VOCAB) {
       if (vocabEditMode !== "table") return;
       items.forEach((item) => {
@@ -325,6 +688,40 @@ export const createAnkiExportModal = ({
   const renderVocabForm = () => {
     if (!vocabForm) return;
     vocabForm.innerHTML = "";
+    if (template === TEMPLATE_CUSTOM && vocabEditMode === "single") {
+      const total = items.length;
+      if (vocabCounter) vocabCounter.textContent = total ? `${currentIndex + 1} / ${total}` : "0 / 0";
+      if (vocabPrev) vocabPrev.disabled = currentIndex === 0;
+      if (vocabNext) vocabNext.disabled = currentIndex >= total - 1;
+      const item = items[currentIndex];
+      if (!item) return;
+      const fields = selectedCustomTemplate?.fields || [];
+      fields.forEach((field) => {
+        const row = doc.createElement("div");
+        row.className = "anki-vocab-field";
+
+        const label = doc.createElement("div");
+        label.className = "anki-vocab-field-label";
+        label.textContent = field;
+        row.appendChild(label);
+
+        const input = doc.createElement("textarea");
+        input.className = "anki-vocab-input";
+        input.value = getCustomValue(item, field);
+        input.setAttribute("data-item-id", item.id);
+        input.setAttribute("data-field", field);
+        input.rows = 3;
+        input.addEventListener("input", (event) => {
+          const target = event.currentTarget;
+          const value = target.value || "";
+          overrides.set(getCustomKey(item.id, field), value);
+        });
+
+        row.appendChild(input);
+        vocabForm.appendChild(row);
+      });
+      return;
+    }
     if (template !== TEMPLATE_VOCAB || vocabEditMode !== "single") return;
     const total = items.length;
     if (vocabCounter) vocabCounter.textContent = total ? `${currentIndex + 1} / ${total}` : "0 / 0";
@@ -375,6 +772,14 @@ export const createAnkiExportModal = ({
       if (reviewBackSecondary) reviewBackSecondary.textContent = "";
       if (reviewCounter) reviewCounter.textContent = "0 / 0";
       if (vocabCounter) vocabCounter.textContent = "0 / 0";
+      if (reviewDots) reviewDots.innerHTML = "";
+      return;
+    }
+    if (template === TEMPLATE_CUSTOM) {
+      reviewFront.textContent = "";
+      reviewBack.textContent = "";
+      if (reviewBackSecondary) reviewBackSecondary.textContent = "";
+      if (reviewCounter) reviewCounter.textContent = "0 / 0";
       if (reviewDots) reviewDots.innerHTML = "";
       return;
     }
@@ -432,7 +837,8 @@ export const createAnkiExportModal = ({
   };
 
   const openTab = (name) => {
-    const isConfig = name === "config";
+    const isCustom = template === TEMPLATE_CUSTOM;
+    const isConfig = name === "config" || isCustom || isCustomPanelOpen;
     currentTab = isConfig ? "config" : "review";
     if (tabConfigButton) {
       tabConfigButton.classList.toggle("is-active", isConfig);
@@ -441,6 +847,10 @@ export const createAnkiExportModal = ({
     if (tabReviewButton) {
       tabReviewButton.classList.toggle("is-active", !isConfig);
       tabReviewButton.setAttribute("aria-selected", !isConfig ? "true" : "false");
+      tabReviewButton.disabled = isCustom || isCustomPanelOpen;
+    }
+    if (tabConfigButton) {
+      tabConfigButton.disabled = isCustom || isCustomPanelOpen;
     }
     if (configPanel) configPanel.classList.toggle("hidden", !isConfig);
     if (reviewPanel) reviewPanel.classList.toggle("hidden", isConfig);
@@ -451,22 +861,26 @@ export const createAnkiExportModal = ({
 
   const updateSources = () => {
     const isVocab = template === TEMPLATE_VOCAB;
+    const isCustom = template === TEMPLATE_CUSTOM;
     if (frontToggle) {
-      frontToggle.classList.toggle("hidden", isVocab);
+      frontToggle.classList.toggle("hidden", isVocab || isCustom);
     }
     if (vocabControls) {
-      vocabControls.classList.toggle("hidden", !isVocab);
+      vocabControls.classList.toggle("hidden", !(isVocab || isCustom));
     }
     if (vocabNav) {
       vocabNav.classList.toggle(
         "hidden",
-        !isVocab || vocabEditMode !== "single" || currentTab !== "config"
+        !(isVocab || isCustom) || vocabEditMode !== "single" || currentTab !== "config"
       );
     }
     if (vocabMode) {
       const buttons = Array.from(vocabMode.querySelectorAll("button"));
       buttons.forEach((button) => {
         const mode = button.dataset.mode;
+        if (mode === "review") {
+          button.classList.toggle("hidden", isCustom);
+        }
         const isActive = currentTab === "review"
           ? mode === "review"
           : mode === vocabEditMode;
@@ -477,22 +891,26 @@ export const createAnkiExportModal = ({
     if (panel) {
       panel.classList.toggle("is-vocab-table", isVocab && vocabEditMode === "table");
       panel.classList.toggle("is-vocab-single", isVocab && vocabEditMode === "single");
+      panel.classList.toggle("is-custom-template", isCustom);
     }
     if (table) {
-      table.classList.toggle("hidden", isVocab && vocabEditMode !== "table");
+      table.classList.toggle("hidden", (isVocab || isCustom) && vocabEditMode !== "table");
     }
     if (vocabForm) {
-      vocabForm.classList.toggle("hidden", !isVocab || vocabEditMode !== "single");
+      vocabForm.classList.toggle("hidden", !(isVocab || isCustom) || vocabEditMode !== "single");
     }
     if (reviewCard) {
       reviewCard.classList.toggle("is-vocab", isVocab);
     }
-    frontSource = isVocab ? "text" : getToggleValue(frontToggle, "text");
+    frontSource = isVocab || isCustom ? "text" : getToggleValue(frontToggle, "text");
     backSource = frontSource === "text" ? "note" : "text";
+    renderCustomSummary(isCustom ? selectedCustomTemplate : null);
     renderHeader();
     renderTable();
     renderVocabForm();
-    renderReview();
+    if (!isCustom) {
+      renderReview();
+    }
   };
 
   const close = (result) => {
@@ -511,7 +929,8 @@ export const createAnkiExportModal = ({
     frontSource,
     backSource,
     template,
-    overrides
+    overrides,
+    customTemplate: selectedCustomTemplate
   });
 
   const open = (payload) => {
@@ -527,7 +946,12 @@ export const createAnkiExportModal = ({
     currentTab = "config";
     setFooterCount(items.length);
     setToggleValue(frontToggle, "text");
-    if (templateSelect) templateSelect.value = template;
+    loadCustomTemplates();
+    renderTemplateOptions();
+    templateValue = TEMPLATE_BASIC;
+    selectTemplateValue(templateValue);
+    setTemplateFromValue(templateValue);
+    closeCustomPanel();
     if (panel) {
       panel.classList.toggle("is-vocab", template === TEMPLATE_VOCAB);
     }
@@ -549,14 +973,162 @@ export const createAnkiExportModal = ({
   tabReviewButton?.addEventListener("click", () => openTab("review"));
 
   templateSelect?.addEventListener("change", (event) => {
-    const value = event.target.value === TEMPLATE_VOCAB ? TEMPLATE_VOCAB : TEMPLATE_BASIC;
-    template = value;
+    const value = event.target.value || TEMPLATE_BASIC;
+    if (value === TEMPLATE_CUSTOM_ADD) {
+      selectTemplateValue(value);
+      openCustomPanel();
+      return;
+    }
+    closeCustomPanel();
+    selectTemplateValue(value);
+    setTemplateFromValue(value);
     if (panel) {
       panel.classList.toggle("is-vocab", template === TEMPLATE_VOCAB);
     }
     if (table) {
       table.classList.toggle("is-vocab", template === TEMPLATE_VOCAB);
     }
+    updateSources();
+  });
+
+  templateDeleteButton?.addEventListener("click", async () => {
+    if (!selectedCustomTemplate) return;
+    const ok = window.confirm(`Xoa template ${selectedCustomTemplate.name}?`);
+    if (!ok) return;
+    const nextTemplates = customTemplates.filter((item) => item.id !== selectedCustomTemplate.id);
+    await saveCustomTemplates?.(nextTemplates);
+    customTemplates = nextTemplates;
+    selectedCustomTemplate = null;
+    renderTemplateOptions();
+    selectTemplateValue(TEMPLATE_BASIC);
+    setTemplateFromValue(TEMPLATE_BASIC);
+    updateSources();
+  });
+
+  templateEditButton?.addEventListener("click", () => {
+    if (!selectedCustomTemplate) return;
+    openCustomPanel(selectedCustomTemplate);
+  });
+
+  customBackButton?.addEventListener("click", () => {
+    closeCustomPanel();
+    selectTemplateValue(customPrevTemplateValue);
+    setTemplateFromValue(customPrevTemplateValue);
+    updateSources();
+  });
+
+  customCancelButton?.addEventListener("click", () => {
+    closeCustomPanel();
+    selectTemplateValue(customPrevTemplateValue);
+    setTemplateFromValue(customPrevTemplateValue);
+    updateSources();
+  });
+
+  customDeleteButton?.addEventListener("click", async () => {
+    if (!editingTemplateId) return;
+    const target = customTemplates.find((item) => item.id === editingTemplateId);
+    if (!target) return;
+    const ok = window.confirm(`Xoa template ${target.name}?`);
+    if (!ok) return;
+    const nextTemplates = customTemplates.filter((item) => item.id !== editingTemplateId);
+    await saveCustomTemplates?.(nextTemplates);
+    customTemplates = nextTemplates;
+    selectedCustomTemplate = null;
+    editingTemplateId = "";
+    renderTemplateOptions();
+    closeCustomPanel();
+    selectTemplateValue(TEMPLATE_BASIC);
+    setTemplateFromValue(TEMPLATE_BASIC);
+    updateSources();
+  });
+
+  customAddField?.addEventListener("click", () => {
+    customDraft.fields.push("");
+    renderCustomMapOptions();
+    renderCustomFieldList();
+    const inputs = customFields?.querySelectorAll(".anki-custom-field-input");
+    const lastInput = inputs ? inputs[inputs.length - 1] : null;
+    lastInput?.focus();
+  });
+
+  customTextMap?.addEventListener("change", (event) => {
+    customDraft.textField = event.target.value || "";
+    renderCustomFieldList();
+  });
+
+  customNoteMap?.addEventListener("change", (event) => {
+    customDraft.noteField = event.target.value || "";
+    renderCustomFieldList();
+  });
+
+  customSaveButton?.addEventListener("click", async () => {
+    const name = escapeText(customNameInput?.value || "");
+    const fields = customDraft.fields
+      .map((field) => normalizeFieldName(field))
+      .filter(Boolean);
+    const uniqueSet = new Set(fields.map((field) => field.toLowerCase()));
+    let errorMessage = "";
+    if (!name) {
+      errorMessage = "Ten template khong duoc rong";
+    } else if (fields.length === 0) {
+      errorMessage = "Can it nhat 1 field";
+    } else if (uniqueSet.size !== fields.length) {
+      errorMessage = "Ten field khong duoc trung nhau";
+    } else if (fields.some((field) => !field)) {
+      errorMessage = "Ten field khong duoc rong";
+    }
+    if (errorMessage) {
+      setCustomError(errorMessage);
+      return;
+    }
+    setCustomError("");
+    const now = new Date().toISOString();
+    if (editingTemplateId) {
+      const nextTemplates = customTemplates.map((item) => {
+        if (item.id !== editingTemplateId) return item;
+        return {
+          ...item,
+          name,
+          textField: customDraft.textField,
+          noteField: customDraft.noteField,
+          fields,
+          updatedAt: now
+        };
+      });
+      await saveCustomTemplates?.(nextTemplates);
+      customTemplates = nextTemplates;
+      selectedCustomTemplate = customTemplates.find((item) => item.id === editingTemplateId) || null;
+      renderTemplateOptions();
+      if (selectedCustomTemplate) {
+        selectTemplateValue(`${CUSTOM_PREFIX}${selectedCustomTemplate.id}`);
+        setTemplateFromValue(`${CUSTOM_PREFIX}${selectedCustomTemplate.id}`);
+      } else {
+        selectTemplateValue(TEMPLATE_BASIC);
+        setTemplateFromValue(TEMPLATE_BASIC);
+      }
+      closeCustomPanel();
+      updateSources();
+      return;
+    }
+    const templateId = crypto.randomUUID();
+    const nextTemplate = {
+      id: templateId,
+      name,
+      isCustom: true,
+      createdAt: now,
+      updatedAt: now,
+      textField: customDraft.textField,
+      noteField: customDraft.noteField,
+      fields
+    };
+    const nextTemplates = [...customTemplates, nextTemplate];
+    await saveCustomTemplates?.(nextTemplates);
+    customTemplates = nextTemplates;
+    selectedCustomTemplate = nextTemplate;
+    renderTemplateOptions();
+    selectTemplateValue(`${CUSTOM_PREFIX}${templateId}`);
+    setTemplateFromValue(`${CUSTOM_PREFIX}${templateId}`);
+    closeCustomPanel();
     updateSources();
   });
 

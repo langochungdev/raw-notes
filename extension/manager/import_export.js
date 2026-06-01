@@ -105,6 +105,7 @@ export const attachImportExport = ({
 
   const getOverrideKey = (itemId, side, source) => `${itemId}:${side}:${source}`;
   const getVocabKey = (itemId, field) => `${itemId}:vocab:${field}`;
+  const getCustomKey = (itemId, field) => `${itemId}:custom:${field}`;
 
   const getAnkiValue = (item, side, source, overrides) => {
     const key = getOverrideKey(item.id, side, source);
@@ -123,6 +124,14 @@ export const attachImportExport = ({
     const key = getVocabKey(item.id, field);
     if (overrides?.has(key)) return overrides.get(key) || "";
     return getVocabDefaultValue(item, field);
+  };
+
+  const getCustomValue = (item, field, template, overrides) => {
+    const key = getCustomKey(item.id, field);
+    if (overrides?.has(key)) return overrides.get(key) || "";
+    if (template?.textField === field) return item.text || "";
+    if (template?.noteField === field) return item.note || "";
+    return "";
   };
 
   const handleJsonExport = async () => {
@@ -182,7 +191,7 @@ export const attachImportExport = ({
     }
     const payload = await openAnkiExport?.({ items, collectorName: collector.name });
     if (!payload) return;
-    const { frontSource, backSource, overrides, template } = payload;
+    const { frontSource, backSource, overrides, template, customTemplate } = payload;
     let fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
     let rows = [];
     if (template === "vocab") {
@@ -206,6 +215,21 @@ export const attachImportExport = ({
         );
         return values.join("\t");
       }));
+    } else if (template === "custom") {
+      if (!customTemplate) {
+        showNotice(doc, "Custom template not found");
+        return;
+      }
+      const templateName = normalizeFileName(customTemplate.name || "custom");
+      fileName = `${normalizeFileName(collector.name)}_${templateName}_anki.txt`;
+      const fields = Array.isArray(customTemplate.fields) ? customTemplate.fields : [];
+      rows = items.map((item) => {
+        const values = fields.map((fieldName) => {
+          const cleanName = String(fieldName || "");
+          return sanitizeTsv(getCustomValue(item, cleanName, customTemplate, overrides));
+        });
+        return values.join("\t");
+      });
     } else {
       rows = items.map((item) => {
         const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));

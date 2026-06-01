@@ -239,7 +239,7 @@
             <div class="modal-header">
                 <div class="modal-title" id="anki-export-title">Export Anki</div>
             </div>
-            <div class="anki-tab-row">
+            <div id="anki-tab-row" class="anki-tab-row">
                 <div class="anki-tabs" role="tablist">
                     <button id="anki-tab-config" type="button" class="anki-tab is-active" role="tab" aria-selected="true" aria-controls="anki-config-panel">Cau hinh</button>
                     <button id="anki-tab-review" type="button" class="anki-tab" role="tab" aria-selected="false" aria-controls="anki-review-panel">Review thu</button>
@@ -253,13 +253,19 @@
                 </div>
                 <div class="anki-template">
                     <label class="anki-template-label" for="anki-template-select">Template</label>
-                    <select id="anki-template-select" class="anki-template-select">
-                        <option value="basic" selected>Basic</option>
-                        <option value="vocab">Vocabulary</option>
-                    </select>
+                    <div class="anki-template-select-wrap">
+                        <select id="anki-template-select" class="anki-template-select">
+                            <option value="basic" selected>Basic</option>
+                            <option value="vocab">Vocabulary</option>
+                            <option value="custom-add">Custom +</option>
+                        </select>
+                        <button id="anki-template-edit" type="button" class="anki-template-edit hidden">Edit</button>
+                        <button id="anki-template-delete" type="button" class="anki-template-delete hidden" aria-label="Delete template">✕</button>
+                    </div>
                 </div>
             </div>
             <div id="anki-config-panel" class="anki-panel-body" role="tabpanel">
+                <div id="anki-custom-summary" class="anki-custom-summary hidden"></div>
                 <div class="anki-toggles">
                     <div class="anki-toggle-group" id="anki-front-toggle">
                         <div class="anki-toggle-label">Mat truoc</div>
@@ -315,6 +321,44 @@
                     <button id="anki-export" type="button">Export 0 cards</button>
                 </div>
             </div>
+            <div id="anki-custom-panel" class="anki-custom-panel hidden">
+                <div class="anki-custom-header">
+                    <button id="anki-custom-back" type="button" class="anki-back-button">← Back</button>
+                    <div class="anki-custom-title">Custom Template</div>
+                </div>
+                <div id="anki-custom-error" class="anki-custom-error hidden"></div>
+                <div class="anki-custom-section">
+                    <div class="anki-custom-label">Tên template</div>
+                    <input id="anki-custom-name" type="text" class="anki-custom-input" placeholder="Ví dụ: IELTS, Grammar..." />
+                </div>
+                <div class="anki-custom-section">
+                    <div class="anki-custom-label">Map dữ liệu vào field</div>
+                    <div class="anki-custom-map">
+                        <div class="anki-custom-map-row">
+                            <span class="anki-custom-dot is-text"></span>
+                            <span class="anki-custom-map-name">text</span>
+                            <span class="anki-custom-map-arrow">→</span>
+                            <select id="anki-custom-text-map" class="anki-custom-select"></select>
+                        </div>
+                        <div class="anki-custom-map-row">
+                            <span class="anki-custom-dot is-note"></span>
+                            <span class="anki-custom-map-name">note</span>
+                            <span class="anki-custom-map-arrow">→</span>
+                            <select id="anki-custom-note-map" class="anki-custom-select"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="anki-custom-section">
+                    <div class="anki-custom-label">Fields xuất ra</div>
+                    <div id="anki-custom-fields" class="anki-custom-fields"></div>
+                    <button id="anki-custom-add-field" type="button" class="anki-custom-add">+ Thêm field</button>
+                </div>
+                <div class="anki-custom-footer">
+                    <button id="anki-custom-cancel" type="button" class="outline-button">Huỷ</button>
+                    <button id="anki-custom-delete" type="button" class="danger-outline hidden">Xóa template</button>
+                    <button id="anki-custom-save" type="button">Lưu template</button>
+                </div>
+            </div>
         </div>
     </div>
     <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -325,6 +369,10 @@
                 </div>
             </div>
             <div class="settings-body">
+                <div id="settings-lock-banner" class="settings-lock-banner hidden">
+                    <div class="settings-lock-text">Chọn thư mục lưu trước khi thay đổi cài đặt</div>
+                    <button id="settings-lock-pick" type="button" class="outline-button">Chọn thư mục</button>
+                </div>
                 <div class="settings-section">
                     <div class="settings-section-title">Storage</div>
                     <div class="settings-row">
