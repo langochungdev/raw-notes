@@ -31,7 +31,15 @@ if [[ -f "$ZIP_PATH" ]]; then
   rm -f "$ZIP_PATH"
 fi
 
-powershell.exe -NoProfile -Command "Get-ChildItem -Path '$ROOT_DIR/extension' -Exclude 'node_modules' | Compress-Archive -DestinationPath '$ZIP_PATH' -Force"
+if command -v cygpath >/dev/null 2>&1; then
+  WIN_ROOT_DIR=$(cygpath -w "$ROOT_DIR")
+  WIN_ZIP_PATH=$(cygpath -w "$ZIP_PATH")
+else
+  WIN_ROOT_DIR="$ROOT_DIR"
+  WIN_ZIP_PATH="$ZIP_PATH"
+fi
+
+powershell.exe -NoProfile -Command "Get-ChildItem -Path '$WIN_ROOT_DIR\extension' -Exclude 'node_modules' | Compress-Archive -DestinationPath '$WIN_ZIP_PATH' -Force"
 
 if [[ ! -f "$ZIP_PATH" ]]; then
   exit 1
