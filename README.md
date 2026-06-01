@@ -79,23 +79,3 @@ text-collector/
   npm run test:e2e
   ```
 - **Debug:** Mở Manager Page → View Logs. Mọi lỗi File System/Storage đều được lưu tại đây.
-
-## Build & Release
-
-**Lần đầu setup:**
-1. Tạo key: openssl genrsa -out key.pem 2048
-2. Backup key.pem ra nơi an toàn — không commit lên git
-3. npm run build:crx
-4. Deploy thư mục web/
-5. Kéo web/rawnotes.crx vào chrome://extensions
-6. Copy Extension ID → điền vào web/updates.xml
-7. Deploy lại web/updates.xml
-
-**Mỗi lần release:**
-1. Tăng version trong extension/manifest.json
-2. npm run build:crx
-3. Commit web/ và push
-4. Deploy
-
-**Lưu ý quan trọng:**
-Nếu mất key.pem thì phải gỡ extension và cài lại từ đầu.

@@ -9,7 +9,7 @@ window.__rawNotesEditorReady = (async () => {
         initialMarkdown: root.innerText || "",
         onChange: (markdown) => {
           try {
-            const event = new CustomEvent("rawnotes:markdown-change", {
+            const event = new CustomEvent("textcollector:markdown-change", {
               detail: { markdown }
             });
             window.dispatchEvent(event);

@@ -1,7 +1,6 @@
 {
   "manifest_version": 3,
   "name": "RawNotes",
-  "update_url": "https://rawnotes.langochung.me/updates.xml",
   "version": "0.1.0",
   "permissions": [
     "storage",

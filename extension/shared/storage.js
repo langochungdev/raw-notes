@@ -1,6 +1,6 @@
 import { SCHEMA_VERSION, STORAGE_KEYS } from "./constants.js";
 
-const DB_NAME = "rawnotes-db";
+const DB_NAME = "textcollector-db";
 const DB_VERSION = 1;
 const STORE_NAME = "handles";
 

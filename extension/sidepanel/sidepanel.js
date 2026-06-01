@@ -1168,7 +1168,7 @@ const handleEditorKeydown = async (event) => {
 editorBody.addEventListener("keydown", handleEditorKeydown);
 rawEditor.addEventListener("keydown", handleEditorKeydown);
 
-window.addEventListener("rawnotes:markdown-change", () => {
+window.addEventListener("textcollector:markdown-change", () => {
   if (app.editorMode === "raw") {
     editorManager.scheduleSave();
   }

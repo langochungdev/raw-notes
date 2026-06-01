@@ -722,17 +722,60 @@ const checkCollectorFolder = async () => {
   return hasFolder;
 };
 
-const setCurrentVersion = () => {
-  const manifest = chrome.runtime.getManifest();
-  const currentVersion = manifest.version.replace(/^v/i, "");
-  const versionEl = document.querySelector(".status-version");
-  if (versionEl) {
-    versionEl.textContent = `RawNotes v${currentVersion}`;
+const compareVersions = (v1, v2) => {
+  const cleanV1 = (v1 || "").replace(/^v/i, "");
+  const cleanV2 = (v2 || "").replace(/^v/i, "");
+  const parts1 = cleanV1.split(".").map(Number);
+  const parts2 = cleanV2.split(".").map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+};
+
+const checkVersion = async () => {
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const currentVersion = manifest.version.replace(/^v/i, "");
+    const versionEl = document.querySelector(".status-version");
+    if (versionEl) {
+      versionEl.textContent = `RawNotes v${currentVersion}`;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const { tc_last_version_check, tc_latest_version } = await chrome.storage.local.get([
+      "tc_last_version_check",
+      "tc_latest_version"
+    ]);
+
+    let latestVersion = tc_latest_version;
+    if (tc_last_version_check !== today) {
+      const response = await fetch("https://rawnotes.langochung.me/version.json", { cache: "no-cache" });
+      if (response.ok) {
+        const data = await response.json();
+        latestVersion = data.version.replace(/^v/i, "");
+        await chrome.storage.local.set({
+          tc_last_version_check: today,
+          tc_latest_version: latestVersion
+        });
+      }
+    }
+
+    if (latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
+      if (versionEl) {
+        versionEl.innerHTML = `<a href="https://rawnotes.langochung.me/" target="_blank" style="color: #e24b4a; text-decoration: none;">RawNotes new version v${latestVersion}</a>`;
+      }
+    }
+  } catch (error) {
+    console.error("Version check failed", error);
   }
 };
 
 const init = async () => {
-  setCurrentVersion();
+  checkVersion();
   await checkAndMigrateSchema(logger);
   await storage.loadCollectorsFromDisk();
   await reloadAllData();
