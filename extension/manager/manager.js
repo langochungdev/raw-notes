@@ -677,6 +677,13 @@ settingsLockPick?.addEventListener("click", async () => {
 });
 
 noFolderPick?.addEventListener("click", async () => {
+  if (needsPermission) {
+    const perm = await storage.requestCollectorPermission();
+    if (perm === "granted") {
+      window.location.reload();
+    }
+    return;
+  }
   const handle = await handlePickCollectorFolder();
   if (!handle) return;
   await checkCollectorFolder();
@@ -890,13 +897,42 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+let needsPermission = false;
+
 const checkCollectorFolder = async () => {
   const handle = await storage.restoreCollectorDirectory();
   const hasFolder = Boolean(handle);
   hasCollectorFolder = hasFolder;
   setSettingsLocked(!hasFolder);
+  
+  if (hasFolder) {
+    const permission = await storage.queryCollectorPermission();
+    if (permission !== "granted") {
+      needsPermission = true;
+      if (noFolderState) {
+        noFolderState.classList.remove("hidden");
+        const title = noFolderState.querySelector('.no-folder-title');
+        const desc = noFolderState.querySelector('.no-folder-desc');
+        const btn = noFolderState.querySelector('.no-folder-button');
+        if (title) title.textContent = "Cấp quyền truy cập";
+        if (desc) desc.textContent = "Vui lòng cấp quyền truy cập vào thư mục lưu trữ để tiếp tục sử dụng.";
+        if (btn) btn.textContent = "Cấp quyền";
+      }
+      return false;
+    }
+  }
+  
+  needsPermission = false;
   if (noFolderState) {
     noFolderState.classList.toggle("hidden", hasFolder);
+    if (!hasFolder) {
+      const title = noFolderState.querySelector('.no-folder-title');
+      const desc = noFolderState.querySelector('.no-folder-desc');
+      const btn = noFolderState.querySelector('.no-folder-button');
+      if (title) title.textContent = "Chọn thư mục lưu trữ";
+      if (desc) desc.textContent = "Chọn một thư mục để bắt đầu quản lý collector notes.";
+      if (btn) btn.textContent = "Chọn thư mục";
+    }
   }
   return hasFolder;
 };
