@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Script nay dung de build va dong goi extension thanh file zip tuong thich tot voi Windows Explorer
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -7,19 +8,16 @@ MANIFEST_PATH="$ROOT_DIR/extension/manifest.json"
 PACKAGE_JSON="$ROOT_DIR/extension/package.json"
 
 if [[ ! -f "$VERSION_JSON" ]]; then
-  echo "Khong tim thay web/version.json"
   exit 1
 fi
 
 VERSION_RAW=$(grep -oE '"version"\s*:\s*"[^"]+"' "$VERSION_JSON" | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
 if [[ -z "$VERSION_RAW" ]]; then
-  echo "Khong doc duoc version tu web/version.json"
   exit 1
 fi
 
 VERSION="${VERSION_RAW#v}"
 if [[ -z "$VERSION" ]]; then
-  echo "Version khong hop le"
   exit 1
 fi
 
@@ -33,14 +31,9 @@ if [[ -f "$ZIP_PATH" ]]; then
   rm -f "$ZIP_PATH"
 fi
 
-if command -v tar >/dev/null 2>&1; then
-  tar -a -c -f "$ZIP_PATH" -C "$ROOT_DIR/extension" --exclude "node_modules" .
-else
-  powershell.exe -NoProfile -Command "Compress-Archive -Path '$ROOT_DIR/extension/*' -DestinationPath '$ZIP_PATH' -Force"
-fi
+powershell.exe -NoProfile -Command "Get-ChildItem -Path '$ROOT_DIR/extension' -Exclude 'node_modules' | Compress-Archive -DestinationPath '$ZIP_PATH' -Force"
 
 if [[ ! -f "$ZIP_PATH" ]]; then
-  echo "Khong tao duoc file zip"
   exit 1
 fi
 
