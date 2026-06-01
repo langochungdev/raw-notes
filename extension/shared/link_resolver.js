@@ -90,7 +90,7 @@ export const resolveSource = (selection, options = {}) => {
   
   const flushTrace = (traceArray) => {
     const text = traceArray.join('\n');
-    console.log(text);
+
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       chrome.runtime.sendMessage({
         type: "LOG",

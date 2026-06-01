@@ -2,16 +2,21 @@
   "manifest_version": 3,
   "name": "RawNotes",
   "version": "0.1.0",
+  "description": "A powerful and lightweight note taking extension for researchers and developers.",
   "permissions": [
     "storage",
-    "activeTab",
     "scripting",
-    "contextMenus",
     "sidePanel"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://rentry.co/*",
+    "https://rawnotes.langochung.me/*"
   ],
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
   "background": {
     "service_worker": "background/service_worker.js",
     "type": "module"

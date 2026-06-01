@@ -945,7 +945,14 @@ const checkVersion = async () => {
 
     if (latestVersion && compareVersions(latestVersion, currentVersion) > 0) {
       if (versionEl) {
-        versionEl.innerHTML = `<a href="https://rawnotes.langochung.me/" target="_blank" style="color: #e24b4a; text-decoration: none;">RawNotes new version v${latestVersion}</a>`;
+        versionEl.innerHTML = "";
+        const a = document.createElement("a");
+        a.href = "https://rawnotes.langochung.me/";
+        a.target = "_blank";
+        a.style.color = "#e24b4a";
+        a.style.textDecoration = "none";
+        a.textContent = `RawNotes new version v${latestVersion}`;
+        versionEl.appendChild(a);
       }
     }
   } catch (error) {
