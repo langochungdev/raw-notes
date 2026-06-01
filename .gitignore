@@ -33,6 +33,12 @@ yarn.lock
 
 # Browser extension specifics
 extension/node_modules/
+key.pem
+*.crx
+extension.crx
+extension.pem
 
 # Docs: ignore plan file
 docs/TEXT_COLLECTOR_PLAN.md
+# Tree Mapper
+.tree/

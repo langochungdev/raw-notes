@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:milkdown": "node scripts/build-milkdown.js"
+    "build:milkdown": "node scripts/build-milkdown.js",
+    "build:crx": "bash ../scripts/build-crx.sh"
   },
   "keywords": [],
   "author": "",
