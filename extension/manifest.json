@@ -3,6 +3,12 @@
   "name": "RawNotes",
   "version": "0.2.0",
   "description": "A powerful and lightweight note taking extension for researchers and developers.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "rawnotes@langochung.me",
+      "strict_min_version": "109.0"
+    }
+  },
   "permissions": [
     "storage",
     "scripting",
@@ -18,6 +24,9 @@
     "128": "assets/icon128.png"
   },
   "background": {
+    "scripts": [
+      "background/service_worker.js"
+    ],
     "service_worker": "background/service_worker.js",
     "type": "module"
   },

@@ -5,14 +5,19 @@
   "main": "index.js",
   "scripts": {
     "build:milkdown": "node scripts/build-milkdown.js",
-    "build:zip": "bash ../scripts/build-zip.sh"
+    "build:zip": "bash ../scripts/build-zip.sh",
+    "lint:js": "eslint .",
+    "lint:ext": "npx web-ext lint --source-dir .",
+    "lint": "npm run lint:js && npm run lint:ext"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "eslint": "^10.4.1",
+    "web-ext": "^10.3.0"
   },
   "dependencies": {
     "@milkdown/kit": "^7.21.1"
