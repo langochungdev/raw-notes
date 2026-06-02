@@ -48,7 +48,7 @@ sequenceDiagram
 ## 3. Cấu trúc thư mục cốt lõi
 
 ```text
-text-collector/
+raw-notes/
 ├── background/service_worker.js    # Hub xử lý data & file I/O
 ├── content/content_script.js       # Bắt sự kiện highlight, inject tooltip
 ├── sidepanel/                      # Giao diện Obsidian-like editor
@@ -68,14 +68,14 @@ text-collector/
    ```
 3. Mở trình duyệt, truy cập `chrome://extensions/`.
 4. Bật **Developer mode** (Góc trên bên phải).
-5. Click **Load unpacked** → Chọn thư mục `text-collector`.
+5. Click **Load unpacked** → Chọn thư mục `raw-notes`.
 
 ## 5. Testing Onboarding
 
 - **Unit/E2E Test:**
   ```bash
   npm install
-  npm run test:unit
-  npm run test:e2e
+  npm run web-
+  npm run build:zip
   ```
 - **Debug:** Mở Manager Page → View Logs. Mọi lỗi File System/Storage đều được lưu tại đây.

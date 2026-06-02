@@ -17,7 +17,7 @@ import { attachLogViewer } from "./logs.js";
 import { createItemManager } from "./items.js";
 import { createCollectorManager, recalcCollectorCounts } from "./collectors.js";
 import { createEditModal } from "./edit_modal.js";
-import { createAnkiExportModal } from "./anki_export.js";
+import { initAnkiExport } from "./popup-export/popup.js";
 
 const logger = new Logger();
 const storage = new StorageService(logger);
@@ -77,54 +77,6 @@ const editError = document.getElementById("edit-error");
 const miniSearchStatus = document.getElementById("minisearch-status");
 const noFolderState = document.getElementById("no-folder-state");
 const noFolderPick = document.getElementById("no-folder-pick");
-const ankiExportModal = document.getElementById("anki-export-modal");
-const ankiExportPanel = document.getElementById("anki-export-panel");
-const ankiTabRow = document.getElementById("anki-tab-row");
-const ankiTabConfig = document.getElementById("anki-tab-config");
-const ankiTabReview = document.getElementById("anki-tab-review");
-const ankiConfigPanel = document.getElementById("anki-config-panel");
-const ankiReviewPanel = document.getElementById("anki-review-panel");
-const ankiTemplateSelect = document.getElementById("anki-template-select");
-const ankiTemplateDelete = document.getElementById("anki-template-delete");
-const ankiCustomSummary = document.getElementById("anki-custom-summary");
-const ankiCustomPanel = document.getElementById("anki-custom-panel");
-const ankiCustomBack = document.getElementById("anki-custom-back");
-const ankiCustomName = document.getElementById("anki-custom-name");
-const ankiCustomTextMap = document.getElementById("anki-custom-text-map");
-const ankiCustomNoteMap = document.getElementById("anki-custom-note-map");
-const ankiCustomFields = document.getElementById("anki-custom-fields");
-const ankiCustomAddField = document.getElementById("anki-custom-add-field");
-const ankiCustomCancel = document.getElementById("anki-custom-cancel");
-const ankiCustomSave = document.getElementById("anki-custom-save");
-const ankiCustomError = document.getElementById("anki-custom-error");
-const ankiVocabControls = document.getElementById("anki-vocab-controls");
-const ankiVocabMode = document.getElementById("anki-vocab-mode");
-const ankiVocabNav = document.getElementById("anki-vocab-nav");
-const ankiVocabPrev = document.getElementById("anki-vocab-prev");
-const ankiVocabNext = document.getElementById("anki-vocab-next");
-const ankiVocabCounter = document.getElementById("anki-vocab-counter");
-const ankiFrontToggle = document.getElementById("anki-front-toggle");
-const ankiTable = document.getElementById("anki-table");
-const ankiTableHeader = document.getElementById("anki-table-header");
-const ankiTableBody = document.getElementById("anki-table-body");
-const ankiVocabForm = document.getElementById("anki-vocab-form");
-const ankiReviewCard = document.getElementById("anki-review-card");
-const ankiReviewFront = document.getElementById("anki-review-front");
-const ankiReviewBack = document.getElementById("anki-review-back");
-const ankiReviewWrap = document.getElementById("anki-review-wrap");
-const ankiReviewFrontText = document.getElementById("anki-review-front-text");
-const ankiReviewBackText = document.getElementById("anki-review-back-text");
-const ankiReviewBackSecondary = document.getElementById("anki-review-back-secondary");
-const ankiReviewDots = document.getElementById("anki-review-dots");
-const ankiReviewHint = document.getElementById("anki-review-hint");
-const ankiReviewPrev = document.getElementById("anki-review-prev");
-const ankiReviewNext = document.getElementById("anki-review-next");
-const ankiReviewCounter = document.getElementById("anki-review-counter");
-const ankiTemplateEdit = document.getElementById("anki-template-edit");
-const ankiFooter = document.getElementById("anki-footer");
-const ankiExportButton = document.getElementById("anki-export");
-const ankiCancelButton = document.getElementById("anki-cancel");
-const ankiCustomDelete = document.getElementById("anki-custom-delete");
 
 let reloadTimer = null;
 
@@ -465,64 +417,7 @@ const editModalManager = createEditModal({
   doc: document
 });
 
-const ankiExportManager = createAnkiExportModal({
-  modal: ankiExportModal,
-  panel: ankiExportPanel,
-  tabRow: ankiTabRow,
-  tabConfigButton: ankiTabConfig,
-  tabReviewButton: ankiTabReview,
-  configPanel: ankiConfigPanel,
-  reviewPanel: ankiReviewPanel,
-  templateSelect: ankiTemplateSelect,
-  templateDeleteButton: ankiTemplateDelete,
-  templateEditButton: ankiTemplateEdit,
-  customSummary: ankiCustomSummary,
-  customPanel: ankiCustomPanel,
-  customBackButton: ankiCustomBack,
-  customNameInput: ankiCustomName,
-  customTextMap: ankiCustomTextMap,
-  customNoteMap: ankiCustomNoteMap,
-  customFields: ankiCustomFields,
-  customAddField: ankiCustomAddField,
-  customCancelButton: ankiCustomCancel,
-  customDeleteButton: ankiCustomDelete,
-  customSaveButton: ankiCustomSave,
-  customError: ankiCustomError,
-  vocabControls: ankiVocabControls,
-  vocabMode: ankiVocabMode,
-  vocabNav: ankiVocabNav,
-  vocabPrev: ankiVocabPrev,
-  vocabNext: ankiVocabNext,
-  vocabCounter: ankiVocabCounter,
-  frontToggle: ankiFrontToggle,
-  table: ankiTable,
-  tableHeader: ankiTableHeader,
-  tableBody: ankiTableBody,
-  vocabForm: ankiVocabForm,
-  reviewCard: ankiReviewCard,
-  reviewFront: ankiReviewFrontText,
-  reviewBack: ankiReviewBackText,
-  reviewBackSecondary: ankiReviewBackSecondary,
-  reviewWrap: ankiReviewWrap,
-  reviewDots: ankiReviewDots,
-  reviewHint: ankiReviewHint,
-  reviewPrev: ankiReviewPrev,
-  reviewNext: ankiReviewNext,
-  reviewCounter: ankiReviewCounter,
-  exportButton: ankiExportButton,
-  cancelButton: ankiCancelButton,
-  footer: ankiFooter,
-  getCustomTemplates: () => configState.ankiTemplates || [],
-  saveCustomTemplates: async (templates) => {
-    const nextConfig = {
-      ...configState,
-      ankiTemplates: templates
-    };
-    await saveConfigToDisk(nextConfig);
-    return configState;
-  },
-  doc: document
-});
+
 
 const itemManager = createItemManager({
   storage,
@@ -805,7 +700,16 @@ attachImportExport({
   getSelectedItemIds: () => Array.from(selectedIds),
   getCollectors: () => allCollectors,
   getAllItems: () => allItems,
-  openAnkiExport: (payload) => ankiExportManager.open(payload),
+  openAnkiExport: async (payload) => {
+    const ankiExportManager = await initAnkiExport({
+      getConfig: () => configState,
+      saveConfig: async (nextConfig) => {
+        configState = nextConfig;
+        await storage.save("config", nextConfig);
+      }
+    });
+    ankiExportManager.open(payload);
+  },
   loadCollectors: collectorManager.loadCollectors,
   loadItems: itemManager.loadItems,
   showNotice,

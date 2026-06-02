@@ -1,0 +1,129 @@
+<div id="anki-export-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-export-title">
+    <div id="anki-export-panel" class="modal-panel anki-panel">
+        <div class="modal-header anki-header">
+            <div class="modal-title" id="anki-export-title">Export Anki</div>
+            <div class="anki-tabs" role="tablist" id="anki-tab-group">
+                <button id="anki-tab-config" type="button" class="anki-tab is-active" role="tab" aria-selected="true" aria-controls="anki-config-panel">Cau hinh</button>
+                <button id="anki-tab-review" type="button" class="anki-tab" role="tab" aria-selected="false" aria-controls="anki-review-panel">Review thu</button>
+            </div>
+            <input id="anki-custom-name" type="text" class="anki-custom-name-input hidden" placeholder="Tên template..." />
+            <div class="anki-template">
+                <label class="anki-template-label" for="anki-template-select">Template</label>
+                <div class="anki-template-select-wrap">
+                    <select id="anki-template-select" class="anki-template-select">
+                        <option value="basic" selected>Basic</option>
+                        <option value="vocab">Vocabulary</option>
+                        <option value="custom-add">Custom +</option>
+                    </select>
+                    <button id="anki-template-edit" type="button" class="anki-template-edit hidden">Edit</button>
+                    <button id="anki-template-delete" type="button" class="anki-template-delete hidden" aria-label="Delete template">✕</button>
+                </div>
+            </div>
+        </div>
+        <div class="anki-content-frame" id="anki-content-frame">
+            <div id="anki-config-panel" class="anki-panel-body" role="tabpanel">
+                <div id="anki-vocab-controls" class="anki-vocab-controls hidden">
+                    <div id="anki-vocab-mode" class="anki-toggle-buttons">
+                        <button type="button" class="is-active" data-mode="table" aria-pressed="true">Table</button>
+                        <button type="button" data-mode="single" aria-pressed="false">Tung item</button>
+                        <button type="button" data-mode="review" aria-pressed="false">Review</button>
+                    </div>
+                </div>
+                <div id="anki-custom-summary" class="anki-custom-summary hidden"></div>
+                <div class="anki-toggles">
+                    <div class="anki-toggle-group" id="anki-front-toggle">
+                        <div class="anki-toggle-label">Mat truoc</div>
+                        <div class="anki-toggle-buttons">
+                            <button type="button" class="is-active" data-value="text" aria-pressed="true">Text</button>
+                            <button type="button" data-value="note" aria-pressed="false">Note</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="anki-table" class="anki-table">
+                    <div id="anki-table-header"></div>
+                    <div id="anki-table-body" class="anki-table-body"></div>
+                </div>
+                <div id="anki-vocab-form" class="anki-vocab-form hidden"></div>
+                <div class="anki-config-note">Import vao Anki: File → Import, chon Tab lam separator.</div>
+            </div>
+            <div id="anki-review-panel" class="anki-panel-body hidden" role="tabpanel">
+                <div id="anki-review-wrap" class="anki-review-wrap">
+                    <div id="anki-review-card" class="anki-review-card">
+                        <div class="anki-review-inner">
+                            <div id="anki-review-front" class="anki-review-face anki-front">
+                                <div class="anki-review-label">Mat truoc</div>
+                                <div id="anki-review-front-text" class="anki-review-text"></div>
+                            </div>
+                            <div id="anki-review-back" class="anki-review-face anki-back">
+                                <div class="anki-review-label">Mat sau</div>
+                                <div id="anki-review-back-text" class="anki-review-text"></div>
+                                <div id="anki-review-back-secondary" class="anki-review-secondary"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="anki-review-dots" class="anki-review-dots"></div>
+                    <div class="anki-review-controls">
+                        <button id="anki-review-prev" type="button" class="anki-review-nav" aria-label="Previous item">◀</button>
+                        <div id="anki-review-counter" class="anki-review-counter">0 / 0</div>
+                        <button id="anki-review-next" type="button" class="anki-review-nav" aria-label="Next item">▶</button>
+                    </div>
+                    <div id="anki-review-hint" class="anki-review-hint">
+                        <span class="anki-hint-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                                <path d="M5 12h8a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                <path d="M5 12h4V7a2 2 0 1 0-4 0v5z" fill="currentColor" />
+                            </svg>
+                        </span>
+                        <span>Click de xem mat sau</span>
+                    </div>
+                </div>
+            </div>
+            <div id="anki-custom-panel" class="anki-panel-body hidden">
+                <div id="anki-custom-error" class="anki-custom-error hidden"></div>
+                <div class="anki-custom-section">
+                    <div class="anki-custom-label">Map dữ liệu vào field</div>
+                    <div class="anki-custom-map">
+                        <div class="anki-custom-map-row">
+                            <span class="anki-custom-dot is-text"></span>
+                            <span class="anki-custom-map-name">text</span>
+                            <span class="anki-custom-map-arrow">→</span>
+                            <select id="anki-custom-text-map" class="anki-custom-select"></select>
+                        </div>
+                        <div class="anki-custom-map-row">
+                            <span class="anki-custom-dot is-note"></span>
+                            <span class="anki-custom-map-name">note</span>
+                            <span class="anki-custom-map-arrow">→</span>
+                            <select id="anki-custom-note-map" class="anki-custom-select"></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="anki-custom-section">
+                    <div class="anki-custom-label">Fields xuất ra</div>
+                    <div id="anki-custom-fields" class="anki-custom-fields"></div>
+                    <button id="anki-custom-add-field" type="button" class="anki-custom-add">+ Thêm field</button>
+                </div>
+            </div>
+        </div>
+        <div id="anki-footer" class="anki-footer">
+            <div class="anki-footer-note">Export định dạng .txt (TSV)</div>
+            <div id="anki-vocab-nav" class="anki-vocab-nav hidden">
+                <button id="anki-vocab-prev" type="button" class="anki-review-nav" aria-label="Previous item">◀</button>
+                <div id="anki-vocab-counter" class="anki-review-counter">0 / 0</div>
+                <button id="anki-vocab-next" type="button" class="anki-review-nav" aria-label="Next item">▶</button>
+            </div>
+            <div class="anki-footer-actions">
+                <button id="anki-cancel" type="button" class="outline-button">Huỷ</button>
+                <button id="anki-primary-btn" type="button" class="anki-primary-btn">
+                    <span class="button-icon" id="anki-primary-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 20V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M8 14l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M5 4h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <span id="anki-primary-text">Export 0 cards</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

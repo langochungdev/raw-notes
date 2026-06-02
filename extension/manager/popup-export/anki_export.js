@@ -1,9 +1,11 @@
 export const createAnkiExportModal = ({
   modal,
   panel,
-  tabRow,
+  exportTitle,
+  tabGroup,
   tabConfigButton,
   tabReviewButton,
+  contentFrame,
   configPanel,
   reviewPanel,
   templateSelect,
@@ -11,15 +13,12 @@ export const createAnkiExportModal = ({
   templateEditButton,
   customSummary,
   customPanel,
-  customBackButton,
   customNameInput,
   customTextMap,
   customNoteMap,
   customFields,
   customAddField,
-  customCancelButton,
   customDeleteButton,
-  customSaveButton,
   customError,
   vocabControls,
   vocabMode,
@@ -42,7 +41,9 @@ export const createAnkiExportModal = ({
   reviewPrev,
   reviewNext,
   reviewCounter,
-  exportButton,
+  primaryButton,
+  primaryText,
+  primaryIcon,
   cancelButton,
   footer,
   getCustomTemplates,
@@ -97,9 +98,23 @@ export const createAnkiExportModal = ({
     { key: "full_vi", label: "Full Vietnamese", type: "text" }
   ];
 
-  const setFooterCount = (count) => {
-    if (!exportButton) return;
-    exportButton.textContent = `Export ${count} cards`;
+  const updatePrimaryButton = () => {
+    if (!primaryButton || !primaryText || !primaryIcon) return;
+    if (isCustomPanelOpen) {
+      primaryText.textContent = "Lưu Template";
+      primaryIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      `;
+    } else {
+      primaryText.textContent = `Export ${items.length} cards`;
+      primaryIcon.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+      `;
+    }
   };
 
   const escapeText = (value) => String(value || "").replace(/\s+/g, " ").trim();
@@ -169,12 +184,22 @@ export const createAnkiExportModal = ({
 
   const setCustomPanelOpen = (value) => {
     isCustomPanelOpen = Boolean(value);
+    
+    if (exportTitle) exportTitle.textContent = isCustomPanelOpen ? "Custom Template" : "Export Anki";
+    
+    if (tabGroup) tabGroup.classList.toggle("hidden", isCustomPanelOpen);
+    if (customNameInput) customNameInput.classList.toggle("hidden", !isCustomPanelOpen);
+    
     if (customPanel) customPanel.classList.toggle("hidden", !isCustomPanelOpen);
-    if (tabRow) tabRow.classList.toggle("hidden", isCustomPanelOpen);
-    if (footer) footer.classList.toggle("hidden", isCustomPanelOpen);
     if (configPanel) configPanel.classList.toggle("hidden", isCustomPanelOpen || currentTab !== "config");
     if (reviewPanel) reviewPanel.classList.toggle("hidden", isCustomPanelOpen || currentTab === "config");
-    if (panel) panel.classList.toggle("is-custom", isCustomPanelOpen);
+    
+    if (panel) {
+      panel.classList.toggle("is-custom", isCustomPanelOpen);
+      panel.classList.toggle("is-review", !isCustomPanelOpen && currentTab === "review");
+    }
+    
+    updatePrimaryButton();
   };
 
   const setCustomError = (message) => {
@@ -852,8 +877,11 @@ export const createAnkiExportModal = ({
     if (tabConfigButton) {
       tabConfigButton.disabled = isCustom || isCustomPanelOpen;
     }
-    if (configPanel) configPanel.classList.toggle("hidden", !isConfig);
-    if (reviewPanel) reviewPanel.classList.toggle("hidden", isConfig);
+    if (configPanel) configPanel.classList.toggle("hidden", !isConfig && !isCustomPanelOpen);
+    if (reviewPanel) reviewPanel.classList.toggle("hidden", isConfig && !isCustomPanelOpen);
+    if (panel) {
+      panel.classList.toggle("is-review", !isConfig && !isCustomPanelOpen);
+    }
     if (!isConfig) {
       renderReview();
     }
@@ -944,7 +972,7 @@ export const createAnkiExportModal = ({
     currentIndex = 0;
     vocabEditMode = "table";
     currentTab = "config";
-    setFooterCount(items.length);
+    updatePrimaryButton();
     setToggleValue(frontToggle, "text");
     loadCustomTemplates();
     renderTemplateOptions();
@@ -1010,19 +1038,7 @@ export const createAnkiExportModal = ({
     openCustomPanel(selectedCustomTemplate);
   });
 
-  customBackButton?.addEventListener("click", () => {
-    closeCustomPanel();
-    selectTemplateValue(customPrevTemplateValue);
-    setTemplateFromValue(customPrevTemplateValue);
-    updateSources();
-  });
 
-  customCancelButton?.addEventListener("click", () => {
-    closeCustomPanel();
-    selectTemplateValue(customPrevTemplateValue);
-    setTemplateFromValue(customPrevTemplateValue);
-    updateSources();
-  });
 
   customDeleteButton?.addEventListener("click", async () => {
     if (!editingTemplateId) return;
@@ -1061,7 +1077,7 @@ export const createAnkiExportModal = ({
     renderCustomFieldList();
   });
 
-  customSaveButton?.addEventListener("click", async () => {
+  const saveCustomTemplate = async () => {
     const name = escapeText(customNameInput?.value || "");
     const fields = customDraft.fields
       .map((field) => normalizeFieldName(field))
@@ -1130,7 +1146,7 @@ export const createAnkiExportModal = ({
     setTemplateFromValue(`${CUSTOM_PREFIX}${templateId}`);
     closeCustomPanel();
     updateSources();
-  });
+  };
 
   vocabMode?.addEventListener("click", (event) => {
     const button = event.target.closest("button");
@@ -1208,11 +1224,24 @@ export const createAnkiExportModal = ({
     playAudio(chip.dataset.audioSrc || "");
   });
 
-  exportButton?.addEventListener("click", () => {
-    close(buildPayload());
+  primaryButton?.addEventListener("click", () => {
+    if (isCustomPanelOpen) {
+      saveCustomTemplate();
+    } else {
+      close(buildPayload());
+    }
   });
 
-  cancelButton?.addEventListener("click", () => close(null));
+  cancelButton?.addEventListener("click", () => {
+    if (isCustomPanelOpen) {
+      closeCustomPanel();
+      selectTemplateValue(customPrevTemplateValue);
+      setTemplateFromValue(customPrevTemplateValue);
+      updateSources();
+    } else {
+      close(null);
+    }
+  });
 
   modal?.addEventListener("pointerdown", (event) => {
     if (event.target === modal) {
