@@ -7,7 +7,6 @@ const storageService = new StorageService(logger);
 const sidePanelByWindow = new Map();
 const sidePanelPorts = new Map();
 const pendingScrollTabs = new Map();
-const SIDE_PANEL_TTL_MS = 6000;
 
 const broadcastSidepanelState = async (windowId, isOpen) => {
   sidePanelByWindow.set(windowId, {
@@ -377,7 +376,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
   }
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "complete") {
     const data = pendingScrollTabs.get(tabId);
     if (data) {

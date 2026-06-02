@@ -123,7 +123,7 @@ const parseShareResponse = async (response) => {
   let data = null;
   try {
     data = await response.json();
-  } catch (error) {
+  } catch {
     data = null;
   }
   if (!response.ok) {
@@ -147,7 +147,7 @@ const getShareSlug = (shareUrl) => {
   try {
     const parsed = new URL(shareUrl);
     return parsed.pathname.replace(/^\//, "");
-  } catch (error) {
+  } catch {
     return "";
   }
 };
@@ -220,7 +220,7 @@ export class StorageService {
     try {
       const fileHandle = await dirHandle.getFileHandle(fileName);
       return await this.readJsonFileFromHandle(fileHandle);
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -339,7 +339,7 @@ export class StorageService {
         const collectorDir = await handle.getDirectoryHandle(collector.name);
         const itemsData = await this.tryReadJsonFile(collectorDir, "items.json");
         collectorItems = Array.isArray(itemsData) ? itemsData : [];
-      } catch (error) {
+      } catch {
         collectorItems = [];
       }
 
@@ -721,11 +721,11 @@ export class StorageService {
     try {
       await this.postShareRequest(endpoint, payload, false);
       return true;
-    } catch (error) {
+    } catch {
       try {
         await this.postShareRequest(endpoint, payload, true);
         return true;
-      } catch (csrfError) {
+      } catch {
         return this.requestShareViaTab("update", { editCode, markdown, shareUrl });
       }
     }
@@ -738,11 +738,11 @@ export class StorageService {
     try {
       await this.postShareRequest(endpoint, payload, false);
       return true;
-    } catch (error) {
+    } catch {
       try {
         await this.postShareRequest(endpoint, payload, true);
         return true;
-      } catch (csrfError) {
+      } catch {
         return this.requestShareViaTab("delete", { editCode, shareUrl });
       }
     }
@@ -1046,7 +1046,7 @@ export class StorageService {
     }
     try {
       console.debug("restoreVaultDirectory handle:", handle);
-    } catch (e) {
+    } catch {
       await Promise.resolve();
     }
     return handle;

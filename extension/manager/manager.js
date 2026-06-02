@@ -63,7 +63,6 @@ const logList = document.getElementById("log-list");
 const logFilterButtons = Array.from(
   document.querySelectorAll("[data-log-filter]")
 );
-const manualEntryForm = document.getElementById("manual-entry");
 const entryCollector = document.getElementById("entry-collector");
 const editCollectorRow = document.getElementById("edit-collector-row");
 const editCollector = document.getElementById("edit-collector");
@@ -94,7 +93,8 @@ let reloadAllData = async () => {};
 const DEFAULT_SETTINGS = {
   sidebarOpenMode: "float",
   collectorFolderLabel: "",
-  defaultCollectorColor: "#00eeff"
+  defaultCollectorColor: "#00eeff",
+  itemSortOrder: "desc"
 };
 const CONFIG_FILE_NAME = "config.json";
 const createDefaultConfig = () => ({
@@ -169,7 +169,7 @@ const loadConfigFromDisk = async (options = {}) => {
   let raw = null;
   try {
     raw = await storage.tryReadJsonFile(handle, CONFIG_FILE_NAME);
-  } catch (error) {
+  } catch {
     raw = null;
   }
   if (!raw && shouldCreate) {
@@ -256,7 +256,7 @@ const handleCopyShare = async (item) => {
   try {
     await navigator.clipboard.writeText(item.shareUrl);
     showNotice(document, "Link copied");
-  } catch (error) {
+  } catch {
     showNotice(document, "Copy failed");
   }
 };
@@ -266,7 +266,7 @@ const handleCopyText = async (item) => {
   try {
     await navigator.clipboard.writeText(item.text);
     showNotice(document, "Text copied");
-  } catch (error) {
+  } catch {
     showNotice(document, "Copy failed");
   }
 };
@@ -368,8 +368,7 @@ const toggleSearchCollectorPanel = () => {
 
 const searchService = new SearchService();
 
-const updateSettingsUI = async (options = {}) => {
-  const preferExistingPaths = Boolean(options.preferExistingPaths);
+const updateSettingsUI = async () => {
   const handle = await storage.restoreCollectorDirectory();
   hasCollectorFolder = Boolean(handle);
   setSettingsLocked(!hasCollectorFolder);
@@ -438,6 +437,7 @@ const itemManager = createItemManager({
   getSearchCollectorIds: () => searchCollectorIds,
   getSearchQuery: () => searchQuery,
   getSelectedIds: () => selectedIds,
+  getItemSortOrder: () => settingsState.itemSortOrder || "desc",
   setCurrentResults: (results) => {
     currentResults = results;
   },
@@ -452,6 +452,24 @@ const itemManager = createItemManager({
     collectorManager.renderCollectorList();
   }
 });
+
+const itemsSortToggle = document.getElementById("items-sort-toggle");
+if (itemsSortToggle) {
+  const updateSortIcon = () => {
+    const icon = itemsSortToggle.querySelector(".sort-icon");
+    if (icon) {
+      icon.classList.toggle("is-asc", settingsState.itemSortOrder === "asc");
+    }
+  };
+  updateSortIcon();
+  itemsSortToggle.addEventListener("click", async () => {
+    const current = settingsState.itemSortOrder || "desc";
+    const next = current === "desc" ? "asc" : "desc";
+    await writeSettings({ itemSortOrder: next });
+    updateSortIcon();
+    itemManager.refreshItems();
+  });
+}
 
 const collectorManager = createCollectorManager({
   storage,

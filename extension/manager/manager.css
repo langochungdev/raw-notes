@@ -341,6 +341,20 @@ button {
     margin-bottom: 12px;
 }
 
+.items-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-icon {
+    transition: transform 0.2s ease;
+}
+
+.sort-icon.is-asc {
+    transform: scaleY(-1);
+}
+
 .items-actions {
     display: flex;
     align-items: center;

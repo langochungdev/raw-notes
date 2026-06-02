@@ -143,10 +143,6 @@ const updateExpandedPrefixesAfterRename = (oldPath, nextPath) => {
 
 const sanitizeName = (value) => value.replace(/[\\/:*?"<>|]/g, "").trim();
 const stripMarkdownExtension = (value) => value.replace(/\.md$/i, "");
-const getParentPath = (path) => {
-  const index = path.lastIndexOf("/");
-  return index === -1 ? "" : path.slice(0, index);
-};
 const getEntryName = (path) => {
   const index = path.lastIndexOf("/");
   return index === -1 ? path : path.slice(index + 1);
@@ -836,18 +832,6 @@ nodeMenu.addEventListener("click", async (event) => {
   if (!button) return;
   nodeMenu.classList.add("hidden");
 });
-
-const renderNodeMenu = (buttons, anchor) => {
-  nodeMenu.replaceChildren(...new DOMParser().parseFromString(buttons.map((button) => {
-    return `<button type="button" data-action="${button.action}" class="${button.danger ? "danger" : ""}">
-      ${button.label}
-    </button>`;
-  }).join(""), "text/html").body.childNodes);
-  const rect = anchor.getBoundingClientRect();
-  nodeMenu.style.left = `${Math.min(rect.left, window.innerWidth - 200)}px`;
-  nodeMenu.style.top = `${rect.bottom + 6}px`;
-  nodeMenu.classList.remove("hidden");
-};
 
 document.addEventListener("pointerdown", (event) => {
   if (!nodeMenu.contains(event.target)) {

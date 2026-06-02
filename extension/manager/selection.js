@@ -73,7 +73,7 @@ export const attachSelectionHandlers = ({
       await logger.log("INFO", "storage", "Deleted items", {
         count: ids.length
       });
-    } catch (error) {
+    } catch {
       restoreSnapshot(snapshot);
     }
   };

@@ -23,7 +23,8 @@ export const createItemManager = ({
   getAllCollectors,
   setAllCollectors,
   recalcCollectorCounts,
-  renderCollectors
+  renderCollectors,
+  getItemSortOrder
 }) => {
   const getItemCollectorIds = (item) => {
     if (Array.isArray(item.collectorIds) && item.collectorIds.length > 0) {
@@ -56,7 +57,7 @@ export const createItemManager = ({
     try {
       await storage.updateItem(item.id, { text, note });
       await reloadItems?.();
-    } catch (error) {
+    } catch {
       setAllItems(snapshot);
       await searchService.index(snapshot);
       refreshItems();
@@ -114,7 +115,7 @@ export const createItemManager = ({
       }
       await searchService.index(finalItems);
       refreshItems();
-    } catch (error) {
+    } catch {
       setAllItems(snapshotItems);
       if (snapshotCollectors && setAllCollectors) {
         setAllCollectors(snapshotCollectors);
@@ -138,7 +139,7 @@ export const createItemManager = ({
     try {
       await storage.deleteItems([item.id]);
       await reloadItems?.();
-    } catch (error) {
+    } catch {
       setAllItems(snapshot);
       await searchService.index(snapshot);
       refreshItems();
@@ -174,6 +175,14 @@ export const createItemManager = ({
       // If isAllCollectors is true, we don't filter by collector,
       // so it searches across ALL collectors as expected!
     }
+    
+    const sortOrder = typeof getItemSortOrder === "function" ? getItemSortOrder() : "desc";
+    results.sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+    });
+
     setCurrentResults(results);
     const label = searchQuery ? `Results (${results.length})` : "Items";
     itemsTitle.textContent = label;

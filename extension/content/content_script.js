@@ -107,7 +107,7 @@
           title: document.title || ""
         });
     }
-  } catch (error) {
+  } catch {
     resolveSource = () => ({
       url: currentUrl,
       title: document.title || "",
@@ -916,7 +916,7 @@
           setEdgeVisible(true);
         }
       }
-    } catch (error) {
+    } catch {
       // ignore
     } finally {
       stateCheckInFlight = false;

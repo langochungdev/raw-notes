@@ -20,17 +20,10 @@ export const createAnkiExportModal = ({
   customAddField,
   customDeleteButton,
   customError,
-  vocabControls,
-  vocabMode,
-  vocabNav,
-  vocabPrev,
-  vocabNext,
-  vocabCounter,
   frontToggle,
   table,
   tableHeader,
   tableBody,
-  vocabForm,
   reviewCard,
   reviewFront,
   reviewBack,
@@ -45,12 +38,9 @@ export const createAnkiExportModal = ({
   primaryText,
   primaryIcon,
   cancelButton,
-  footer,
   getCustomTemplates,
   saveCustomTemplates,
-  getConfig,
   getSettings,
-  saveConfig,
   doc
 }) => {
   let resolver = null;
@@ -62,7 +52,6 @@ export const createAnkiExportModal = ({
   let template = "basic";
   let templateValue = "basic";
   let currentIndex = 0;
-  let vocabEditMode = "table";
   let currentTab = "config";
   let customTemplates = [];
   let selectedCustomTemplate = null;
@@ -75,30 +64,11 @@ export const createAnkiExportModal = ({
   let customPrevTemplateValue = "basic";
   let isCustomPanelOpen = false;
   let editingTemplateId = "";
-  const audioPlayer = new Audio();
-
   const TEMPLATE_BASIC = "basic";
   const TEMPLATE_CUSTOM = "custom";
   const TEMPLATE_CUSTOM_ADD = "custom-add";
   const CUSTOM_PREFIX = "custom:";
 
-  const vocabFields = [
-    { key: "keyword", label: "Keyword", type: "text" },
-    { key: "suggestion", label: "Suggestion", type: "text" },
-    { key: "short_vi", label: "Short Vietnamese", type: "text" },
-    { key: "keyword_sound", label: "Keyword_Sound", type: "audio" },
-    { key: "image", label: "Image", type: "image" },
-    { key: "transcription", label: "Transcription", type: "text" },
-    {
-      key: "explanation",
-      label: "Explanation",
-      type: "cloze",
-      hint: "Dung {{c1::tu}} de tao cloze"
-    },
-    { key: "meaning_sound", label: "Meaning_Sound", type: "audio" },
-    { key: "example_sound", label: "Example_Sound", type: "audio" },
-    { key: "full_vi", label: "Full Vietnamese", type: "text" }
-  ];
 
   const updatePrimaryButton = () => {
     if (!primaryButton || !primaryText || !primaryIcon) return;
@@ -498,24 +468,6 @@ export const createAnkiExportModal = ({
     return "";
   };
 
-  const escapeHtml = (value) =>
-    String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
-  const renderCloze = (value, mode) => {
-    const safe = escapeHtml(value);
-    return safe.replace(/\{\{c\d+::(.*?)\}\}/gi, (_match, inner) => {
-      if (mode === "front") {
-        return "<span class=\"anki-cloze-mask\">[...]</span>";
-      }
-      return `<span class=\"anki-cloze-reveal\">${inner}</span>`;
-    });
-  };
-
   const setCellContent = (cell, value) => {
     if (value) {
       cell.textContent = value;
@@ -644,41 +596,6 @@ export const createAnkiExportModal = ({
       row.appendChild(backCell);
       tableBody.appendChild(row);
     });
-  };
-
-  const renderVocabForm = () => {
-    if (!vocabForm) return;
-    vocabForm.textContent = "";
-    if (template === TEMPLATE_CUSTOM) {
-      const item = items[currentIndex];
-      if (!item) return;
-      const fields = selectedCustomTemplate?.fields || [];
-      fields.forEach((field) => {
-        const row = doc.createElement("div");
-        row.className = "anki-vocab-field";
-
-        const label = doc.createElement("div");
-        label.className = "anki-vocab-field-label";
-        label.textContent = field;
-        row.appendChild(label);
-
-        const input = doc.createElement("textarea");
-        input.className = "anki-vocab-input";
-        input.value = getCustomValue(item, field);
-        input.setAttribute("data-item-id", item.id);
-        input.setAttribute("data-field", field);
-        input.rows = 3;
-        input.addEventListener("input", (event) => {
-          const target = event.currentTarget;
-          const value = target.value || "";
-          overrides.set(getCustomKey(item.id, field), value);
-        });
-
-        row.appendChild(input);
-        vocabForm.appendChild(row);
-      });
-      return;
-    }
   };
 
   const renderReview = () => {
@@ -990,7 +907,7 @@ export const createAnkiExportModal = ({
     updateSources();
   });
 
-  reviewCard?.addEventListener("click", (event) => {
+  reviewCard?.addEventListener("click", () => {
     reviewCard.classList.toggle("is-flipped");
     if (reviewWrap) {
       reviewWrap.classList.toggle("is-flipped", reviewCard.classList.contains("is-flipped"));

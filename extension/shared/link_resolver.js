@@ -77,7 +77,7 @@ const scoreLink = (href, currentUrl) => {
     if (segments.length === 1 && !url.search) {
       score -= 50; // heavily penalize simple profile links
     }
-  } catch(e) {}
+  } catch {}
   
   return score;
 };

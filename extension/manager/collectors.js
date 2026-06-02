@@ -75,7 +75,7 @@ export const createCollectorManager = ({
     setCollectors(nextCollectors);
     try {
       await storage.updateCollector(collector.id, { color });
-    } catch (error) {
+    } catch {
       await loadCollectors();
     }
   };

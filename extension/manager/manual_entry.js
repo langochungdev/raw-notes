@@ -75,7 +75,7 @@ export const attachManualEntry = ({
       await searchService.index(updatedItems);
       renderCollectors();
       refreshItems();
-    } catch (error) {
+    } catch {
       setAllItems(snapshot.items);
       setAllCollectors(snapshot.collectors);
       await searchService.index(snapshot.items);
