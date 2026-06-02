@@ -2,7 +2,7 @@ import { createAnkiExportModal } from "./anki_export.js";
 
 let modalInstance = null;
 
-export const initAnkiExport = async ({ getConfig, saveConfig }) => {
+export const initAnkiExport = async ({ getConfig, getSettings, saveConfig }) => {
   if (modalInstance) return modalInstance;
 
   try {
@@ -32,17 +32,10 @@ export const initAnkiExport = async ({ getConfig, saveConfig }) => {
   const ankiCustomFields = document.getElementById("anki-custom-fields");
   const ankiCustomAddField = document.getElementById("anki-custom-add-field");
   const ankiCustomError = document.getElementById("anki-custom-error");
-  const ankiVocabControls = document.getElementById("anki-vocab-controls");
-  const ankiVocabMode = document.getElementById("anki-vocab-mode");
-  const ankiVocabNav = document.getElementById("anki-vocab-nav");
-  const ankiVocabPrev = document.getElementById("anki-vocab-prev");
-  const ankiVocabNext = document.getElementById("anki-vocab-next");
-  const ankiVocabCounter = document.getElementById("anki-vocab-counter");
   const ankiFrontToggle = document.getElementById("anki-front-toggle");
   const ankiTable = document.getElementById("anki-table");
   const ankiTableHeader = document.getElementById("anki-table-header");
   const ankiTableBody = document.getElementById("anki-table-body");
-  const ankiVocabForm = document.getElementById("anki-vocab-form");
   const ankiReviewCard = document.getElementById("anki-review-card");
   const ankiReviewFrontText = document.getElementById("anki-review-front-text");
   const ankiReviewBackText = document.getElementById("anki-review-back-text");
@@ -83,17 +76,10 @@ export const initAnkiExport = async ({ getConfig, saveConfig }) => {
     customAddField: ankiCustomAddField,
     customDeleteButton: ankiCustomDelete,
     customError: ankiCustomError,
-    vocabControls: ankiVocabControls,
-    vocabMode: ankiVocabMode,
-    vocabNav: ankiVocabNav,
-    vocabPrev: ankiVocabPrev,
-    vocabNext: ankiVocabNext,
-    vocabCounter: ankiVocabCounter,
     frontToggle: ankiFrontToggle,
     table: ankiTable,
     tableHeader: ankiTableHeader,
     tableBody: ankiTableBody,
-    vocabForm: ankiVocabForm,
     reviewCard: ankiReviewCard,
     reviewFront: ankiReviewFrontText,
     reviewBack: ankiReviewBackText,
@@ -117,6 +103,9 @@ export const initAnkiExport = async ({ getConfig, saveConfig }) => {
       };
       await saveConfig(nextConfig);
     },
+    getConfig,
+    getSettings,
+    saveConfig,
     doc: document
   });
 

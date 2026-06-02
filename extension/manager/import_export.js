@@ -189,65 +189,77 @@ export const attachImportExport = ({
       showNotice(doc, "Collector not found");
       return;
     }
-    const payload = await openAnkiExport?.({ items, collectorName: collector.name });
-    if (!payload) return;
-    const { frontSource, backSource, overrides, template, customTemplate } = payload;
-    let fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
-    let rows = [];
-    if (template === "vocab") {
-      fileName = `${normalizeFileName(collector.name)}_vocab_anki_${formatDate()}.txt`;
-      rows.push("#notetype:Cloze");
-      rows = rows.concat(items.map((item) => {
-        const fields = [
-          "keyword",
-          "suggestion",
-          "explanation",
-          "transcription",
-          "short_vi",
-          "full_vi",
-          "image",
-          "keyword_sound",
-          "meaning_sound",
-          "example_sound"
-        ];
-        const values = fields.map((field) =>
-          sanitizeTsv(getVocabValue(item, field, overrides))
-        );
-        return values.join("\t");
-      }));
-    } else if (template === "custom") {
-      if (!customTemplate) {
-        showNotice(doc, "Custom template not found");
-        return;
-      }
-      const templateName = normalizeFileName(customTemplate.name || "custom");
-      fileName = `${normalizeFileName(collector.name)}_${templateName}_anki.txt`;
-      const fields = Array.isArray(customTemplate.fields) ? customTemplate.fields : [];
-      rows = items.map((item) => {
-        const values = fields.map((fieldName) => {
-          const cleanName = String(fieldName || "");
-          return sanitizeTsv(getCustomValue(item, cleanName, customTemplate, overrides));
-        });
-        return values.join("\t");
-      });
-    } else {
-      rows = items.map((item) => {
-        const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));
-        const back = sanitizeTsv(getAnkiValue(item, "back", backSource, overrides));
-        return `${front}\t${back}`;
-      });
-    }
-    await writeFile(
-      fileName,
-      [
-        {
-          description: "TSV",
-          accept: { "text/plain": [".txt"] }
+    openAnkiExport?.({
+      items,
+      collectorName: collector.name,
+      onExport: async (payload) => {
+        try {
+          if (!payload) return;
+          const { frontSource, backSource, overrides, template, customTemplate } = payload;
+          let fileName = `${normalizeFileName(collector.name)}_anki_${formatDate()}.txt`;
+          let rows = [];
+          if (template === "vocab") {
+            fileName = `${normalizeFileName(collector.name)}_vocab_anki_${formatDate()}.txt`;
+            rows.push("#notetype:Cloze");
+            rows = rows.concat(items.map((item) => {
+              const fields = [
+                "keyword",
+                "suggestion",
+                "explanation",
+                "transcription",
+                "short_vi",
+                "full_vi",
+                "image",
+                "keyword_sound",
+                "meaning_sound",
+                "example_sound"
+              ];
+              const values = fields.map((field) =>
+                sanitizeTsv(getVocabValue(item, field, overrides))
+              );
+              return values.join("\t");
+            }));
+          } else if (template === "custom") {
+            if (!customTemplate) {
+              showNotice(doc, "Custom template not found");
+              return;
+            }
+            const templateName = normalizeFileName(customTemplate.name || "custom");
+            fileName = `${normalizeFileName(collector.name)}_${templateName}_anki.txt`;
+            const fields = Array.isArray(customTemplate.fields) ? customTemplate.fields : [];
+            rows = items.map((item) => {
+              const values = fields.map((fieldName) => {
+                const cleanName = String(fieldName || "");
+                return sanitizeTsv(getCustomValue(item, cleanName, customTemplate, overrides));
+              });
+              return values.join("\t");
+            });
+          } else {
+            rows = items.map((item) => {
+              const front = sanitizeTsv(getAnkiValue(item, "front", frontSource, overrides));
+              const back = sanitizeTsv(getAnkiValue(item, "back", backSource, overrides));
+              return `${front}\t${back}`;
+            });
+          }
+          await writeFile(
+            fileName,
+            [
+              {
+                description: "TSV",
+                accept: { "text/plain": [".txt"] }
+              }
+            ],
+            rows.join("\n")
+          );
+          showNotice(doc, "Export complete");
+        } catch (error) {
+          await logger.log("ERROR", "export", error.message || "Export failed", {
+            stack: error.stack || null
+          });
+          showNotice(doc, "Export failed");
         }
-      ],
-      rows.join("\n")
-    );
-    showNotice(doc, "Export complete");
+      }
+    });
   };
 
   importButton.addEventListener("click", async () => {

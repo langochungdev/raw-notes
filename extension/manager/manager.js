@@ -703,12 +703,12 @@ attachImportExport({
   openAnkiExport: async (payload) => {
     const ankiExportManager = await initAnkiExport({
       getConfig: () => configState,
+      getSettings: () => settingsState,
       saveConfig: async (nextConfig) => {
-        configState = nextConfig;
-        await storage.save("config", nextConfig);
+        await saveConfigToDisk(nextConfig);
       }
     });
-    ankiExportManager.open(payload);
+    return ankiExportManager.open(payload);
   },
   loadCollectors: collectorManager.loadCollectors,
   loadItems: itemManager.loadItems,
